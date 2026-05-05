@@ -22,6 +22,10 @@ It currently includes:
 
 ![Isometric terrain view](docs/images/terrain-isometric.jpg)
 
+### Terrain Close-Up
+
+![Zoomed-in isometric terrain view](docs/images/terrain-isometric-closeup.jpg)
+
 ### Heat Map
 
 ![Heat map view](docs/images/terrain-heat.jpg)
