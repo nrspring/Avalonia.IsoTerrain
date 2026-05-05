@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:IsoViewport.Demo.Views"
+        x:Class="IsoViewport.Demo.Views.MainWindow"
+        Width="1280"
+        Height="800"
+        WindowState="Maximized"
+        Title="IsoViewport.Demo">
+  <views:MainView />
+</Window>

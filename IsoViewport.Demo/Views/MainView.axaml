@@ -1,0 +1,172 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:IsoViewport.Demo.ViewModels"
+             xmlns:local="using:IsoViewport.Controls.Controls"
+             x:Class="IsoViewport.Demo.Views.MainView"
+             x:DataType="vm:MainViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#20242B" Padding="10">
+      <DockPanel LastChildFill="False">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Command="{Binding LoadRealisticWorldCommand}" Content="Realistic 2500x2500" />
+          <ComboBox
+              Width="160"
+              ItemsSource="{Binding RenderModes}"
+              SelectedItem="{Binding RenderMode, Mode=TwoWay}" />
+          <ToggleSwitch
+              IsChecked="{Binding IsTopDownView, Mode=TwoWay}"
+              OnContent="Top-Down"
+              OffContent="Isometric"
+              VerticalAlignment="Center" />
+          <Button Command="{Binding RotateLeftCommand}" Content="Rotate Left" />
+          <Button Command="{Binding RotateRightCommand}" Content="Rotate Right" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="14">
+          <ToggleSwitch
+              IsChecked="{Binding AnimationsEnabled}"
+              OnContent="Anim On"
+              OffContent="Anim Off"
+              VerticalAlignment="Center" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding Fps, StringFormat='FPS: {0:0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding MapDimensions}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding ViewProjectionMode, StringFormat='View: {0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding CameraZoom, StringFormat='Zoom: {0:0.00}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding CameraRotationDegrees, StringFormat='Angle: {0:0} deg'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding #ViewportHost.Bounds.Width, StringFormat='VPW: {0:0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding #ViewportHost.Bounds.Height, StringFormat='VPH: {0:0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding HoveredTileText}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding ObjectCount, StringFormat='Objects: {0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding VisibleChunks, StringFormat='Chunks: {0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding RenderedTiles, StringFormat='Tiles: {0}'}" />
+          <TextBlock
+              Foreground="#D7DEE8"
+              VerticalAlignment="Center"
+              Text="{Binding VertexCount, StringFormat='Verts: {0}'}" />
+
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid x:Name="ViewportHost" Grid.Row="1" ClipToBounds="True">
+      <local:IsoTileControl
+          TileMap="{Binding TileMap}"
+          ObjectLayer="{Binding ObjectLayer}"
+          CameraZoom="{Binding CameraZoom, Mode=TwoWay}"
+          CameraPanX="{Binding CameraPanX, Mode=TwoWay}"
+          CameraPanY="{Binding CameraPanY, Mode=TwoWay}"
+          CameraRotationDegrees="{Binding CameraRotationDegrees, Mode=TwoWay}"
+          ViewProjectionMode="{Binding ViewProjectionMode, Mode=TwoWay}"
+          RenderMode="{Binding RenderMode, Mode=TwoWay}"
+          AnimationsEnabled="{Binding AnimationsEnabled, Mode=TwoWay}"
+          HoveredTile="{Binding HoveredTile}"
+          ViewportWidth="{Binding #ViewportHost.Bounds.Width}"
+          ViewportHeight="{Binding #ViewportHost.Bounds.Height}"
+          VisibleTiles="{Binding VisibleTiles, Mode=OneWayToSource}"
+          VertexCount="{Binding VertexCount, Mode=OneWayToSource}"
+          VisibleChunks="{Binding VisibleChunks, Mode=OneWayToSource}"
+          RenderedTiles="{Binding RenderedTiles, Mode=OneWayToSource}"
+          Fps="{Binding Fps, Mode=OneWayToSource}"
+          IsHitTestVisible="False"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
+
+      <local:IsoInputOverlay
+          TileMap="{Binding TileMap}"
+          CameraZoom="{Binding CameraZoom, Mode=TwoWay}"
+          CameraPanX="{Binding CameraPanX, Mode=TwoWay}"
+          CameraPanY="{Binding CameraPanY, Mode=TwoWay}"
+          CameraRotationDegrees="{Binding CameraRotationDegrees, Mode=TwoWay}"
+          ViewProjectionMode="{Binding ViewProjectionMode, Mode=TwoWay}"
+          AnimationsEnabled="{Binding AnimationsEnabled, Mode=TwoWay}"
+          ViewportWidth="{Binding #ViewportHost.Bounds.Width}"
+          ViewportHeight="{Binding #ViewportHost.Bounds.Height}"
+          HoveredTile="{Binding HoveredTile, Mode=OneWayToSource}"
+          TileClickedCommand="{Binding HandleTileClickCommand}"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
+
+      <local:TopoLabelOverlay
+          TileMap="{Binding TileMap}"
+          CameraZoom="{Binding CameraZoom}"
+          CameraPanX="{Binding CameraPanX}"
+          CameraPanY="{Binding CameraPanY}"
+          CameraRotationDegrees="{Binding CameraRotationDegrees}"
+          ViewProjectionMode="{Binding ViewProjectionMode}"
+          RenderMode="{Binding RenderMode}"
+          ViewportWidth="{Binding #ViewportHost.Bounds.Width}"
+          ViewportHeight="{Binding #ViewportHost.Bounds.Height}"
+          IsHitTestVisible="False"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
+
+      <local:MiniMapControl
+          TileMap="{Binding TileMap}"
+          CameraZoom="{Binding CameraZoom}"
+          CameraPanX="{Binding CameraPanX, Mode=TwoWay}"
+          CameraPanY="{Binding CameraPanY, Mode=TwoWay}"
+          CameraRotationDegrees="{Binding CameraRotationDegrees}"
+          ViewProjectionMode="{Binding ViewProjectionMode}"
+          ViewportWidth="{Binding #ViewportHost.Bounds.Width}"
+          ViewportHeight="{Binding #ViewportHost.Bounds.Height}"
+          Location="{Binding MiniMapLocation}" />
+
+      <Border
+          HorizontalAlignment="Left"
+          VerticalAlignment="Bottom"
+          Margin="14"
+          Padding="10,8"
+          Background="#AA11151B">
+        <TextBlock
+            Foreground="#E7EDF5"
+            TextWrapping="Wrap"
+            Text="View toggle: isometric / top-down  · WASD: pan  · Scroll / +/-: zoom  · Q/E: rotate  · R: reset  · Space: animate&#10;Left-click: edit tile  · Right-click: unit  · Right/Middle-drag: pan" />
+      </Border>
+
+      <Border
+          IsVisible="{Binding IsLoading}"
+          Background="#AA11151B"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        <TextBlock
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Foreground="#FFFFFF"
+            FontSize="18"
+            Text="Loading" />
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>
