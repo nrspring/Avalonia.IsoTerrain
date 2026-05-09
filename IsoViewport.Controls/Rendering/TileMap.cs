@@ -49,6 +49,11 @@ public sealed class TileMap
         return elevation <= ShallowWaterElevation;
     }
 
+    public static bool IsWaterTile(byte tileType, int elevation)
+    {
+        return IsWaterElevation(elevation) || tileType == (byte)global::IsoViewport.Controls.Rendering.TileType.Water;
+    }
+
     public void SetTile(int row, int col, byte type, byte elev)
     {
         if ((uint)row >= (uint)Rows)

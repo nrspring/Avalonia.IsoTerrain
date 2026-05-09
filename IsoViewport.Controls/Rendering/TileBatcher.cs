@@ -265,7 +265,7 @@ public static class TileBatcher
                 var col = startCol + localCol;
                 var tileType = map.TileType[row, col];
                 var elev = map.Elevation[row, col];
-                var isAnimated = IsAnimatedTile(elev, renderMode);
+                var isAnimated = IsAnimatedTile(tileType, elev, renderMode);
 
                 if (animPass != isAnimated)
                 {
@@ -467,6 +467,8 @@ public static class TileBatcher
         var tileCount = 0;
         var waterCount = 0;
         var deepWaterCount = 0;
+        var totalWaterElevation = 0;
+        var hasHighElevationWater = false;
         var landCount = 0;
         var totalElevation = 0;
         var totalLandElevation = 0;
@@ -476,13 +478,17 @@ public static class TileBatcher
         {
             for (var col = startCol; col < endCol; col++)
             {
+                var tileType = map.TileType[row, col];
                 var elevation = map.Elevation[row, col];
                 tileCount++;
                 totalElevation += elevation;
 
-                if (TileMap.IsWaterElevation(elevation))
+                if (TileMap.IsWaterTile(tileType, elevation))
                 {
                     waterCount++;
+                    totalWaterElevation += elevation;
+                    hasHighElevationWater |= elevation > TileMap.ShallowWaterElevation;
+                    tileTypeCounts[tileType]++;
 
                     if (elevation <= TileMap.DeepWaterElevation)
                     {
@@ -494,26 +500,22 @@ public static class TileBatcher
 
                 landCount++;
                 totalLandElevation += elevation;
-                tileTypeCounts[map.TileType[row, col]]++;
+                tileTypeCounts[tileType]++;
             }
         }
 
         var dominantTileType = (byte)TileType.Sand;
+        var highestCount = -1;
 
-        if (landCount > 0)
+        for (var tileType = 0; tileType < tileTypeCounts.Length; tileType++)
         {
-            var highestCount = -1;
-
-            for (var tileType = 0; tileType < tileTypeCounts.Length; tileType++)
+            if (tileTypeCounts[tileType] <= highestCount)
             {
-                if (tileTypeCounts[tileType] <= highestCount)
-                {
-                    continue;
-                }
-
-                highestCount = tileTypeCounts[tileType];
-                dominantTileType = (byte)tileType;
+                continue;
             }
+
+            highestCount = tileTypeCounts[tileType];
+            dominantTileType = (byte)tileType;
         }
 
         byte representativeElevation;
@@ -522,9 +524,14 @@ public static class TileBatcher
         {
             if (waterCount > 0 && waterCount >= landCount)
             {
-                representativeElevation = deepWaterCount * 2 >= waterCount
-                    ? TileMap.DeepWaterElevation
-                    : TileMap.ShallowWaterElevation;
+                representativeElevation = hasHighElevationWater
+                    ? (byte)Math.Clamp(
+                        (int)MathF.Round((float)totalWaterElevation / Math.Max(1, waterCount)),
+                        TileMap.LandMinElevation,
+                        TileMap.MaxElevation)
+                    : deepWaterCount * 2 >= waterCount
+                        ? TileMap.DeepWaterElevation
+                        : TileMap.ShallowWaterElevation;
             }
             else
             {
@@ -628,7 +635,7 @@ public static class TileBatcher
                 var neighbor = summaries[(neighborRow * blockCols) + neighborCol];
                 var neighborElevation = neighbor.RepresentativeElevation;
 
-                if (TileMap.IsWaterElevation(elevation) != TileMap.IsWaterElevation(neighborElevation))
+                if (TileMap.IsWaterTile(summary.DominantTileType, elevation) != TileMap.IsWaterTile(neighbor.DominantTileType, neighborElevation))
                 {
                     hasCoastline = true;
                 }
@@ -710,7 +717,7 @@ public static class TileBatcher
                 var topCorners = IsoMath.SmoothedTopFaceCorners(map, col, row, zoom, rotationDegrees, projectionMode);
                 var colours = TileColours.GetFaceColours(tileType, elev, TerrainRenderMode.Terrain, row, col);
                 var borderColour = showTerrainTileBorders
-                    ? TileColours.GetTopBorderColour(colours.top, TileMap.IsWaterElevation(elev))
+                    ? TileColours.GetTopBorderColour(colours.top, TileMap.IsWaterTile(tileType, elev))
                     : colours.top;
 
                 EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
@@ -767,9 +774,9 @@ public static class TileBatcher
         }
     }
 
-    private static bool IsAnimatedTile(byte elevation, TerrainRenderMode renderMode)
+    private static bool IsAnimatedTile(byte tileType, byte elevation, TerrainRenderMode renderMode)
     {
-        return renderMode == TerrainRenderMode.Terrain && TileMap.IsWaterElevation(elevation);
+        return renderMode == TerrainRenderMode.Terrain && TileMap.IsWaterTile(tileType, elevation);
     }
 
     private static Vector3 GetContourBorderColour(
@@ -805,7 +812,7 @@ public static class TileBatcher
 
                 var neighborElevation = map.Elevation[sampleRow, sampleCol];
 
-                if (TileMap.IsWaterElevation(elevation) != TileMap.IsWaterElevation(neighborElevation))
+                if (TileMap.IsWaterTile(map.TileType[row, col], elevation) != TileMap.IsWaterTile(map.TileType[sampleRow, sampleCol], neighborElevation))
                 {
                     hasCoastline = true;
                 }
@@ -905,7 +912,7 @@ public static class TileBatcher
                     continue;
                 }
 
-                if (TileMap.IsWaterElevation(map.Elevation[sampleRow, sampleCol]))
+                if (TileMap.IsWaterTile(map.TileType[sampleRow, sampleCol], map.Elevation[sampleRow, sampleCol]))
                 {
                     continue;
                 }

@@ -12,6 +12,7 @@ public enum TileType : byte
     Iron = 5,
     Oil = 6,
     RareMetals = 7,
+    Water = 8,
 }
 
 public static class TileColours
@@ -29,7 +30,8 @@ public static class TileColours
 
     public static (Vector3 top, Vector3 left, Vector3 right) GetFaceColours(byte tileType, byte elev)
     {
-        var top = TileMap.IsWaterElevation(elev)
+        var isWater = TileMap.IsWaterTile(tileType, elev);
+        var top = isWater
             ? elev <= TileMap.DeepWaterElevation ? DeepWaterColour : ShallowWaterColour
             : (TileType)tileType switch
         {
@@ -44,7 +46,7 @@ public static class TileColours
             _ => new Vector3(0.30f, 0.62f, 0.25f),
         };
 
-        if (!TileMap.IsWaterElevation(elev))
+        if (!isWater)
         {
             var elevationShade = Math.Max(0f, 1f - elev * 0.012f);
             top *= elevationShade;
@@ -72,7 +74,7 @@ public static class TileColours
     {
         var colours = GetFaceColours(tileType, elev);
 
-        if (TileMap.IsWaterElevation(elev))
+        if (TileMap.IsWaterTile(tileType, elev))
         {
             return colours;
         }
