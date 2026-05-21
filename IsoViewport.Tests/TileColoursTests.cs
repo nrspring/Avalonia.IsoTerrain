@@ -17,6 +17,18 @@ public sealed class TileColoursTests
     }
 
     [Fact]
+    public void GrassHillElevationDarkeningIsSubtle()
+    {
+        var lowland = TileColours.GetFaceColours((byte)TileType.Grass, TileMap.LandMinElevation).top;
+        var hill = TileColours.GetFaceColours((byte)TileType.Grass, TileMap.LandMinElevation + 5).top;
+
+        Assert.True(hill.X < lowland.X);
+        Assert.True(hill.Y < lowland.Y);
+        Assert.True(hill.Z < lowland.Z);
+        Assert.True(hill.Y > lowland.Y * 0.97f);
+    }
+
+    [Fact]
     public void SideFacesAreDarkerThanTopFace()
     {
         var colours = TileColours.GetFaceColours((byte)TileType.Grass, 4);

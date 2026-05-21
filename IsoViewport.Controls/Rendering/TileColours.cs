@@ -20,6 +20,7 @@ public enum TileType : byte
 public static class TileColours
 {
     private const float MaxVisualElevation = TileMap.MaxElevation;
+    private const float LandElevationShadePerStep = 0.0035f;
     private static readonly Vector3 DeepWaterColour = new(0.08f, 0.24f, 0.45f);
     private static readonly Vector3 ShallowWaterColour = new(0.30f, 0.64f, 0.84f);
 
@@ -50,7 +51,8 @@ public static class TileColours
 
         if (!isWater)
         {
-            var elevationShade = Math.Max(0f, 1f - elev * 0.012f);
+            var elevationAboveLowland = Math.Max(0, elev - TileMap.LandMinElevation);
+            var elevationShade = Math.Max(0.70f, 1f - elevationAboveLowland * LandElevationShadePerStep);
             top *= elevationShade;
         }
 
