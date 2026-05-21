@@ -26,6 +26,18 @@ public sealed class TileColoursTests
     }
 
     [Fact]
+    public void NewTileTypeAliasesUseExistingTerrainColours()
+    {
+        var forest = TileColours.GetFaceColours((byte)TileType.Forest, TileMap.LandMinElevation).top;
+        var forrest = TileColours.GetFaceColours((byte)TileType.Forrest, TileMap.LandMinElevation).top;
+        var rock = TileColours.GetFaceColours((byte)TileType.Rock, TileMap.LandMinElevation).top;
+        var stone = TileColours.GetFaceColours((byte)TileType.Stone, TileMap.LandMinElevation).top;
+
+        Assert.Equal(forest, forrest);
+        Assert.Equal(rock, stone);
+    }
+
+    [Fact]
     public void WaterElevationSelectsDeepAndShallowWaterColours()
     {
         var deep = TileColours.GetFaceColours((byte)TileType.Grass, TileMap.DeepWaterElevation).top;
@@ -90,7 +102,7 @@ public sealed class TileColoursTests
             }
         }
 
-        foreach (var landType in Enum.GetValues<TileType>())
+        foreach (var landType in Enum.GetValues<TileType>().Where(tileType => tileType != TileType.Water))
         {
             Assert.Contains(landType, seen);
         }
