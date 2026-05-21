@@ -29,7 +29,7 @@ public static class ObjectColours
         return (ObjectType)type switch
         {
             ObjectType.Unit => new Vector3(0.95f, 0.25f, 0.25f),
-            ObjectType.Tree => new Vector3(0.15f, 0.55f, 0.20f),
+            ObjectType.Tree => new Vector3(0.03f, 0.44f, 0.26f),
             ObjectType.Structure => new Vector3(0.70f, 0.65f, 0.30f),
             _ => new Vector3(0.95f, 0.25f, 0.25f),
         };

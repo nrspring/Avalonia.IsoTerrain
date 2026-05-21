@@ -38,6 +38,17 @@ public sealed class TileColoursTests
     }
 
     [Fact]
+    public void ForestTilesUseDistinctEvergreenColour()
+    {
+        var grass = TileColours.GetFaceColours((byte)TileType.Grass, TileMap.LandMinElevation).top;
+        var forest = TileColours.GetFaceColours((byte)TileType.Forest, TileMap.LandMinElevation).top;
+
+        Assert.True(forest.X < grass.X * 0.5f);
+        Assert.True(forest.Y < grass.Y * 0.65f);
+        Assert.True(forest.Z > grass.Z * 0.75f);
+    }
+
+    [Fact]
     public void WaterElevationSelectsDeepAndShallowWaterColours()
     {
         var deep = TileColours.GetFaceColours((byte)TileType.Grass, TileMap.DeepWaterElevation).top;

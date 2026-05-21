@@ -40,7 +40,7 @@ public static class TileColours
             TileType.Grass => new Vector3(0.30f, 0.62f, 0.25f),
             TileType.Sand => new Vector3(0.85f, 0.78f, 0.50f),
             TileType.Swamp => new Vector3(0.40f, 0.47f, 0.23f),
-            TileType.Forest => new Vector3(0.15f, 0.42f, 0.18f),
+            TileType.Forest => new Vector3(0.06f, 0.32f, 0.20f),
             TileType.Rock => new Vector3(0.50f, 0.48f, 0.45f),
             TileType.Iron => new Vector3(0.62f, 0.36f, 0.24f),
             TileType.Oil => new Vector3(0.12f, 0.12f, 0.14f),
