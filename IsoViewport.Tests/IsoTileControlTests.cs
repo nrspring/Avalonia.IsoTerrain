@@ -12,6 +12,7 @@ public sealed class IsoTileControlTests
     [InlineData(TerrainRenderMode.Terrain, 0.40f, 1f)]
     [InlineData(TerrainRenderMode.Heat, 0.20f, 1f)]
     [InlineData(TerrainRenderMode.Topographical, 0.20f, 1f)]
+    [InlineData(TerrainRenderMode.Voxel, 0.20f, 1f)]
     public void TerrainBorderVisibilityFadesWithoutRequiringMeshSwap(
         TerrainRenderMode renderMode,
         float zoom,

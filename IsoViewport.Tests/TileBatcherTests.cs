@@ -264,10 +264,35 @@ public sealed class TileBatcherTests
         AssertClose(batch.Vertices[fillOffset + 2], batch.Vertices[borderOffset + 2]);
     }
 
+    [Fact]
+    public void VoxelModeUsesPerTileElevationForTopFaceCorners()
+    {
+        var map = TileMapPresets.Flat(1, 2, (byte)TileType.Grass);
+        map.SetTile(0, 0, (byte)TileType.Grass, 8);
+        map.SetTile(0, 1, (byte)TileType.Grass, 2);
+
+        var batch = TileBatcher.BuildChunkBatch(
+            map,
+            0,
+            0,
+            1f,
+            0f,
+            TerrainRenderMode.Voxel,
+            ViewProjectionMode.Isometric,
+            false);
+        var voxelCorners = IsoMath.TopFaceCorners(0, 0, 8, 1f);
+        var smoothedCorners = IsoMath.SmoothedTopFaceCorners(map, 0, 0, 1f);
+
+        Assert.Equal(2, batch.TileCount);
+        AssertClose(voxelCorners[1].Y, batch.Vertices[7]);
+        Assert.False(NearlyEqual(smoothedCorners[1].Y, batch.Vertices[7]));
+    }
+
     [Theory]
     [InlineData(TerrainRenderMode.Terrain)]
     [InlineData(TerrainRenderMode.Heat)]
     [InlineData(TerrainRenderMode.Topographical)]
+    [InlineData(TerrainRenderMode.Voxel)]
     public void TopDownRenderModesUseFlatTopFaces(TerrainRenderMode renderMode)
     {
         var map = TileMapPresets.Flat(1, 1, (byte)TileType.Grass);

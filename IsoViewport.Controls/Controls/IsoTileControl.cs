@@ -745,7 +745,9 @@ public sealed class IsoTileControl : OpenGlControlBase
             IsoMath.TileDepth(hovered.Col, hovered.Row, elev, Math.Max(map.Rows, map.Cols)) - HoverDepthBias,
             0f,
             1f);
-        var topCorners = IsoMath.SmoothedTopFaceCorners(map, hovered.Col, hovered.Row, 1f, CameraRotationDegrees, ViewProjectionMode);
+        var topCorners = RenderMode == TerrainRenderMode.Voxel
+            ? IsoMath.TopFaceCorners(hovered.Col, hovered.Row, elev, 1f, CameraRotationDegrees, ViewProjectionMode)
+            : IsoMath.SmoothedTopFaceCorners(map, hovered.Col, hovered.Row, 1f, CameraRotationDegrees, ViewProjectionMode);
         var centre = (topCorners[0] + topCorners[1] + topCorners[2] + topCorners[3]) * 0.25f;
         var baseColour = TileColours.GetFaceColours(map.TileType[hovered.Row, hovered.Col], elev).top;
         var ringColour = Vector3.Min(new Vector3(1f, 1f, 1f), baseColour * 1.55f + new Vector3(0.12f, 0.10f, 0.02f));

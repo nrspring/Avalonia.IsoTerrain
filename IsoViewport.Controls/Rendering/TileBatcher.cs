@@ -274,7 +274,20 @@ public static class TileBatcher
 
                 tileCount++;
                 var depth = IsoMath.TileDepth(col, row, elev, mapSize);
-                var topCorners = geometryCache.GetTopCorners(localRow, localCol);
+                var isVoxelMode = renderMode == TerrainRenderMode.Voxel;
+                Vector2[]? voxelTopCorners = null;
+                ReadOnlySpan<Vector2> topCorners;
+
+                if (isVoxelMode)
+                {
+                    voxelTopCorners = IsoMath.TopFaceCorners(col, row, elev, zoom, rotationDegrees, projectionMode);
+                    topCorners = voxelTopCorners;
+                }
+                else
+                {
+                    topCorners = geometryCache.GetTopCorners(localRow, localCol);
+                }
+
                 var baseCorners = geometryCache.GetBaseCorners(localRow, localCol);
                 var tileBounds = GetTileBounds(topCorners, baseCorners);
                 bounds = hasBounds ? RectangleF.Union(bounds, tileBounds) : tileBounds;
@@ -314,6 +327,7 @@ public static class TileBatcher
                     {
                         TerrainRenderMode.Topographical => GetContourBorderColour(map, row, col, colours.top, renderMode),
                         TerrainRenderMode.Heat => GetContourBorderColour(map, row, col, colours.top, renderMode),
+                        TerrainRenderMode.Voxel => GetVoxelBorderColour(map, row, col, colours.top, tileType, elev),
                         _ => showTerrainTileBorders
                             ? EncodeSuppressibleTerrainBorderColour(colours.top)
                             : colours.top,
@@ -321,8 +335,16 @@ public static class TileBatcher
                     EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
                     if (projectionMode == ViewProjectionMode.Isometric)
                     {
-                        EmitLeftFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.left);
-                        EmitRightFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.right);
+                        if (isVoxelMode)
+                        {
+                            EmitVoxelLeftFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.left);
+                            EmitVoxelRightFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.right);
+                        }
+                        else
+                        {
+                            EmitLeftFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.left);
+                            EmitRightFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.right);
+                        }
                     }
                 }
             }
@@ -520,7 +542,7 @@ public static class TileBatcher
 
         byte representativeElevation;
 
-        if (renderMode == TerrainRenderMode.Terrain)
+        if (renderMode == TerrainRenderMode.Terrain || renderMode == TerrainRenderMode.Voxel)
         {
             if (waterCount > 0 && waterCount >= landCount)
             {
@@ -855,6 +877,44 @@ public static class TileBatcher
         return fillColour;
     }
 
+    private static Vector3 GetVoxelBorderColour(
+        TileMap map,
+        int row,
+        int col,
+        Vector3 fillColour,
+        byte tileType,
+        byte elevation)
+    {
+        var isWater = TileMap.IsWaterTile(tileType, elevation);
+
+        if (HasVoxelTopEdge(map, row, col, isWater, elevation))
+        {
+            return TileColours.GetTopBorderColour(fillColour, isWater);
+        }
+
+        return EncodeSuppressibleTerrainBorderColour(fillColour);
+    }
+
+    private static bool HasVoxelTopEdge(TileMap map, int row, int col, bool isWater, byte elevation)
+    {
+        return HasVoxelTopEdgeToNeighbor(map, row - 1, col, isWater, elevation) ||
+               HasVoxelTopEdgeToNeighbor(map, row + 1, col, isWater, elevation) ||
+               HasVoxelTopEdgeToNeighbor(map, row, col - 1, isWater, elevation) ||
+               HasVoxelTopEdgeToNeighbor(map, row, col + 1, isWater, elevation);
+    }
+
+    private static bool HasVoxelTopEdgeToNeighbor(TileMap map, int row, int col, bool isWater, byte elevation)
+    {
+        if ((uint)row >= (uint)map.Rows || (uint)col >= (uint)map.Cols)
+        {
+            return true;
+        }
+
+        var neighborElevation = map.Elevation[row, col];
+        var neighborIsWater = TileMap.IsWaterTile(map.TileType[row, col], neighborElevation);
+        return neighborElevation != elevation || neighborIsWater != isWater;
+    }
+
     private static Vector3 GetHeatContourBorderColour(Vector3 fillColour, bool major)
     {
         var luminance = GetLuminance(fillColour);
@@ -1065,6 +1125,54 @@ public static class TileBatcher
         }
 
         EmitRightFace(vertices, topCorners, lowerRight, lowerBottom, depth, colour);
+    }
+
+    private static void EmitVoxelLeftFace(
+        List<float> vertices,
+        TileMap map,
+        int col,
+        int row,
+        float zoom,
+        float rotationDegrees,
+        ViewProjectionMode projectionMode,
+        ReadOnlySpan<Vector2> topCorners,
+        float depth,
+        Vector3 colour)
+    {
+        var elevation = map.Elevation[row, col];
+
+        if (row + 1 < map.Rows && map.Elevation[row + 1, col] >= elevation)
+        {
+            return;
+        }
+
+        var lowerElevation = row + 1 < map.Rows ? map.Elevation[row + 1, col] : 0;
+        var lowerCorners = IsoMath.TopFaceCorners(col, row + 1, lowerElevation, zoom, rotationDegrees, projectionMode);
+        EmitLeftFace(vertices, topCorners, lowerCorners[0], lowerCorners[1], depth, colour);
+    }
+
+    private static void EmitVoxelRightFace(
+        List<float> vertices,
+        TileMap map,
+        int col,
+        int row,
+        float zoom,
+        float rotationDegrees,
+        ViewProjectionMode projectionMode,
+        ReadOnlySpan<Vector2> topCorners,
+        float depth,
+        Vector3 colour)
+    {
+        var elevation = map.Elevation[row, col];
+
+        if (col + 1 < map.Cols && map.Elevation[row, col + 1] >= elevation)
+        {
+            return;
+        }
+
+        var lowerElevation = col + 1 < map.Cols ? map.Elevation[row, col + 1] : 0;
+        var lowerCorners = IsoMath.TopFaceCorners(col + 1, row, lowerElevation, zoom, rotationDegrees, projectionMode);
+        EmitRightFace(vertices, topCorners, lowerCorners[0], lowerCorners[3], depth, colour);
     }
 
     private static void EmitLeftFace(
