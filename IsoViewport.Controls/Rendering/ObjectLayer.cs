@@ -6,6 +6,9 @@ namespace IsoViewport.Controls.Rendering;
 public sealed class ObjectLayer
 {
     private const uint VertexStrideBytes = 24;
+    private static readonly Vector3 TreeCanopyColour = new(0.03f, 0.44f, 0.26f);
+    private static readonly Vector3 TreeCanopyShadeColour = new(0.02f, 0.30f, 0.18f);
+    private static readonly Vector3 TreeTrunkColour = new(0.34f, 0.20f, 0.10f);
 
     private readonly List<TileObject> _objects = [];
     private uint _vbo;
@@ -89,21 +92,30 @@ public sealed class ObjectLayer
             }
 
             var elevation = map.Elevation[obj.Row, obj.Col];
-            var centre = IsoMath.TileToScreen(obj.Col, obj.Row, elevation + 1, rotationDegrees, projectionMode);
-            var corners = IsoMath.TopFaceCorners(obj.Col, obj.Row, elevation + 1, 1f, rotationDegrees, projectionMode);
+            var objectElevation = obj.Type == (byte)ObjectType.Tree ? elevation : elevation + 1;
+            var corners = IsoMath.TopFaceCorners(obj.Col, obj.Row, objectElevation, 1f, rotationDegrees, projectionMode);
+            var centre = GetQuadCentre(corners);
             var halfWidth = Vector2.Distance(corners[1], corners[3]) * 0.25f;
             var halfHeight = Vector2.Distance(corners[0], corners[2]) * 0.25f;
             var depth = Math.Clamp(IsoMath.TileDepth(obj.Col, obj.Row, elevation, mapSize) - 0.002f, 0f, 1f);
-            var colour = ObjectColours.GetColour(obj.Type);
 
-            EmitQuad(
-                vertices,
-                centre + Vector2.Normalize(corners[0] - centre) * halfHeight,
-                centre + Vector2.Normalize(corners[1] - centre) * halfWidth,
-                centre + Vector2.Normalize(corners[2] - centre) * halfHeight,
-                centre + Vector2.Normalize(corners[3] - centre) * halfWidth,
-                depth,
-                colour);
+            if (obj.Type == (byte)ObjectType.Tree)
+            {
+                EmitTree(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
+            }
+            else
+            {
+                var colour = ObjectColours.GetColour(obj.Type);
+
+                EmitQuad(
+                    vertices,
+                    centre + Vector2.Normalize(corners[0] - centre) * halfHeight,
+                    centre + Vector2.Normalize(corners[1] - centre) * halfWidth,
+                    centre + Vector2.Normalize(corners[2] - centre) * halfHeight,
+                    centre + Vector2.Normalize(corners[3] - centre) * halfWidth,
+                    depth,
+                    colour);
+            }
 
             obj.Dirty = false;
         }
@@ -186,6 +198,60 @@ public sealed class ObjectLayer
 
         gl.EnableVertexAttribArray(2);
         gl.VertexAttribPointer(2, 3, VertexAttribPointerType.Float, false, VertexStrideBytes, (IntPtr)12);
+    }
+
+    private static Vector2 GetQuadCentre(ReadOnlySpan<Vector2> corners)
+    {
+        return (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
+    }
+
+    private static void EmitTree(
+        List<float> vertices,
+        Vector2 centre,
+        float halfWidth,
+        float halfHeight,
+        float depth,
+        ViewProjectionMode projectionMode)
+    {
+        var treeHeight = projectionMode == ViewProjectionMode.TopDown
+            ? halfHeight * 1.05f
+            : IsoMath.ElevStep * 1.20f;
+        var trunkHalfWidth = Math.Max(2f, halfWidth * 0.14f);
+        var trunkBottom = centre + new Vector2(0f, halfHeight * 0.26f);
+        var trunkTop = centre - new Vector2(0f, treeHeight * 0.62f);
+        var trunkDepth = Math.Clamp(depth - 0.001f, 0f, 1f);
+
+        EmitQuad(
+            vertices,
+            trunkTop - new Vector2(trunkHalfWidth, 0f),
+            trunkTop + new Vector2(trunkHalfWidth, 0f),
+            trunkBottom + new Vector2(trunkHalfWidth * 0.82f, 0f),
+            trunkBottom - new Vector2(trunkHalfWidth * 0.82f, 0f),
+            trunkDepth,
+            TreeTrunkColour);
+
+        var canopyCentre = centre - new Vector2(0f, treeHeight * 0.78f);
+        var canopyHalfWidth = halfWidth * 0.88f;
+        var canopyHalfHeight = halfHeight * 0.95f;
+        var canopyDepth = Math.Clamp(depth - 0.003f, 0f, 1f);
+
+        EmitQuad(
+            vertices,
+            canopyCentre - new Vector2(0f, canopyHalfHeight),
+            canopyCentre + new Vector2(canopyHalfWidth, 0f),
+            canopyCentre + new Vector2(0f, canopyHalfHeight),
+            canopyCentre - new Vector2(canopyHalfWidth, 0f),
+            canopyDepth,
+            TreeCanopyShadeColour);
+
+        EmitQuad(
+            vertices,
+            canopyCentre - new Vector2(0f, canopyHalfHeight * 0.78f),
+            canopyCentre + new Vector2(canopyHalfWidth * 0.72f, 0f),
+            canopyCentre + new Vector2(0f, canopyHalfHeight * 0.58f),
+            canopyCentre - new Vector2(canopyHalfWidth * 0.72f, 0f),
+            Math.Clamp(canopyDepth - 0.001f, 0f, 1f),
+            TreeCanopyColour);
     }
 
     private static void EmitQuad(
