@@ -25,7 +25,7 @@ public sealed class TileColoursTests
         Assert.True(hill.X < lowland.X);
         Assert.True(hill.Y < lowland.Y);
         Assert.True(hill.Z < lowland.Z);
-        Assert.True(hill.Y > lowland.Y * 0.97f);
+        Assert.True(hill.Y > lowland.Y * 0.49f);
     }
 
     [Fact]
@@ -38,15 +38,12 @@ public sealed class TileColoursTests
     }
 
     [Fact]
-    public void NewTileTypeAliasesUseExistingTerrainColours()
+    public void StoneTilesUseNeutralGrayColour()
     {
-        var forest = TileColours.GetFaceColours((byte)TileType.Forest, TileMap.LandMinElevation).top;
-        var forrest = TileColours.GetFaceColours((byte)TileType.Forrest, TileMap.LandMinElevation).top;
-        var rock = TileColours.GetFaceColours((byte)TileType.Rock, TileMap.LandMinElevation).top;
         var stone = TileColours.GetFaceColours((byte)TileType.Stone, TileMap.LandMinElevation).top;
 
-        Assert.Equal(forest, forrest);
-        Assert.Equal(rock, stone);
+        Assert.True(System.Math.Abs(stone.X - stone.Y) < 0.04f);
+        Assert.True(System.Math.Abs(stone.Y - stone.Z) < 0.06f);
     }
 
     [Fact]

@@ -143,8 +143,8 @@ public sealed class TileBatcherTests
     [Fact]
     public void ElevatedTileUsesSideFaceShadows()
     {
-        var map = TileMapPresets.Flat(1, 1, (byte)TileType.Rock);
-        map.SetTile(0, 0, (byte)TileType.Rock, 2);
+        var map = TileMapPresets.Flat(1, 1, (byte)TileType.Stone);
+        map.SetTile(0, 0, (byte)TileType.Stone, 2);
         var batch = TileBatcher.BuildTileBatch(map, 1f, new RectangleF(-100, -100, 200, 200), 0f, 0f);
 
         var topOffset = 6 * 6 + 3;

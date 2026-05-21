@@ -86,7 +86,7 @@ public static class TileMapPresets
                     <= 3 => (byte)TileType.Sand,
                     <= 5 => (byte)(wetness > 0.70f ? TileType.Swamp : TileType.Grass),
                     <= 8 => (byte)(wetness > 0.56f ? TileType.Forest : TileType.Grass),
-                    >= 10 => (byte)(wetness > 0.88f ? TileType.Iron : TileType.Rock),
+                    >= 10 => (byte)(wetness > 0.88f ? TileType.Iron : TileType.Stone),
                     _ => (byte)(wetness > 0.62f ? TileType.Forest : TileType.Grass),
                 };
 
@@ -199,7 +199,7 @@ public static class TileMapPresets
 
         if (elevation >= 72)
         {
-            return (byte)TileType.Rock;
+            return (byte)TileType.Stone;
         }
 
         if (moisture > 0.54f)
@@ -209,7 +209,7 @@ public static class TileMapPresets
 
         if (elevation >= 56 && moisture < 0.34f)
         {
-            return (byte)TileType.Rock;
+            return (byte)TileType.Stone;
         }
 
         return (byte)TileType.Grass;

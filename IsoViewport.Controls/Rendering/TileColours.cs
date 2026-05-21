@@ -8,9 +8,7 @@ public enum TileType : byte
     Sand = 1,
     Swamp = 2,
     Forest = 3,
-    Forrest = Forest,
-    Rock = 4,
-    Stone = Rock,
+    Stone = 4,
     Iron = 5,
     Oil = 6,
     RareMetals = 7,
@@ -20,7 +18,7 @@ public enum TileType : byte
 public static class TileColours
 {
     private const float MaxVisualElevation = TileMap.MaxElevation;
-    private const float LandElevationShadePerStep = 0.0035f;
+    private const float LandElevationShadePerStep = 0.1f;
     private static readonly Vector3 DeepWaterColour = new(0.08f, 0.24f, 0.45f);
     private static readonly Vector3 ShallowWaterColour = new(0.30f, 0.64f, 0.84f);
 
@@ -42,7 +40,7 @@ public static class TileColours
             TileType.Sand => new Vector3(0.85f, 0.78f, 0.50f),
             TileType.Swamp => new Vector3(0.40f, 0.47f, 0.23f),
             TileType.Forest => new Vector3(0.06f, 0.32f, 0.20f),
-            TileType.Rock => new Vector3(0.50f, 0.48f, 0.45f),
+            TileType.Stone => new Vector3(0.50f, 0.48f, 0.45f),
             TileType.Iron => new Vector3(0.62f, 0.36f, 0.24f),
             TileType.Oil => new Vector3(0.12f, 0.12f, 0.14f),
             TileType.RareMetals => new Vector3(0.38f, 0.60f, 0.66f),
