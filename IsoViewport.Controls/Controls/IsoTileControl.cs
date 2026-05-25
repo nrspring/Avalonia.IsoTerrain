@@ -571,7 +571,7 @@ public sealed class IsoTileControl : OpenGlControlBase
         {
             if (rebuildObjects || objectLayer.Dirty)
             {
-                objectLayer.RebuildVbo(_gl, TileMap, CameraRotationDegrees, ViewProjectionMode);
+                objectLayer.RebuildVbo(_gl, TileMap, CameraRotationDegrees, ViewProjectionMode, RenderMode);
             }
 
             _gl.BindVertexArray(_vao);
@@ -742,7 +742,7 @@ public sealed class IsoTileControl : OpenGlControlBase
 
         var elev = map.Elevation[hovered.Row, hovered.Col];
         var depth = Math.Clamp(
-            IsoMath.TileDepth(hovered.Col, hovered.Row, elev, Math.Max(map.Rows, map.Cols)) - HoverDepthBias,
+            IsoMath.TileDepth(hovered.Col, hovered.Row, elev, Math.Max(map.Rows, map.Cols), CameraRotationDegrees) - HoverDepthBias,
             0f,
             1f);
         var topCorners = RenderMode == TerrainRenderMode.Voxel

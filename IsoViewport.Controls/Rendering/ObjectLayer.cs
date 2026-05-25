@@ -6,9 +6,23 @@ namespace IsoViewport.Controls.Rendering;
 public sealed class ObjectLayer
 {
     private const uint VertexStrideBytes = 24;
+    private const float ObjectDepthBias = 0.00001f;
+    private const float ObjectLayerDepthStep = 0.000005f;
     private static readonly Vector3 TreeCanopyColour = new(0.03f, 0.44f, 0.26f);
     private static readonly Vector3 TreeCanopyShadeColour = new(0.02f, 0.30f, 0.18f);
     private static readonly Vector3 TreeTrunkColour = new(0.34f, 0.20f, 0.10f);
+    private static readonly Vector3 ShadowColour = new(0.04f, 0.05f, 0.05f);
+    private static readonly Vector3 StoneLightColour = new(0.64f, 0.63f, 0.60f);
+    private static readonly Vector3 StoneMidColour = new(0.47f, 0.47f, 0.45f);
+    private static readonly Vector3 StoneDarkColour = new(0.31f, 0.32f, 0.32f);
+    private static readonly Vector3 IronLightColour = new(0.78f, 0.40f, 0.22f);
+    private static readonly Vector3 IronMidColour = new(0.55f, 0.24f, 0.16f);
+    private static readonly Vector3 IronDarkColour = new(0.24f, 0.16f, 0.13f);
+    private static readonly Vector3 OilColour = new(0.03f, 0.03f, 0.04f);
+    private static readonly Vector3 OilHighlightColour = new(0.34f, 0.36f, 0.38f);
+    private static readonly Vector3 RareMetalsLightColour = new(0.62f, 0.93f, 0.98f);
+    private static readonly Vector3 RareMetalsMidColour = new(0.25f, 0.66f, 0.74f);
+    private static readonly Vector3 RareMetalsDarkColour = new(0.11f, 0.36f, 0.43f);
 
     private readonly List<TileObject> _objects = [];
     private uint _vbo;
@@ -71,7 +85,8 @@ public sealed class ObjectLayer
         GL gl,
         TileMap map,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
+        TerrainRenderMode renderMode = TerrainRenderMode.Terrain)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentNullException.ThrowIfNull(map);
@@ -92,29 +107,50 @@ public sealed class ObjectLayer
             }
 
             var elevation = map.Elevation[obj.Row, obj.Col];
-            var objectElevation = obj.Type == (byte)ObjectType.Tree ? elevation : elevation + 1;
+
+            if (renderMode == TerrainRenderMode.Voxel &&
+                projectionMode == ViewProjectionMode.Isometric &&
+                IsOccludedByForegroundVoxel(map, obj.Col, obj.Row, elevation, rotationDegrees))
+            {
+                continue;
+            }
+
+            var objectElevation = ObjectSitsOnTileSurface(obj.Type) ? elevation : elevation + 1;
             var corners = IsoMath.TopFaceCorners(obj.Col, obj.Row, objectElevation, 1f, rotationDegrees, projectionMode);
             var centre = GetQuadCentre(corners);
             var halfWidth = Vector2.Distance(corners[1], corners[3]) * 0.25f;
             var halfHeight = Vector2.Distance(corners[0], corners[2]) * 0.25f;
-            var depth = Math.Clamp(IsoMath.TileDepth(obj.Col, obj.Row, elevation, mapSize) - 0.002f, 0f, 1f);
+            var depth = Math.Clamp(IsoMath.TileDepth(obj.Col, obj.Row, elevation, mapSize, rotationDegrees) - ObjectDepthBias, 0f, 1f);
 
-            if (obj.Type == (byte)ObjectType.Tree)
+            switch ((ObjectType)obj.Type)
             {
-                EmitTree(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
-            }
-            else
-            {
-                var colour = ObjectColours.GetColour(obj.Type);
+                case ObjectType.Tree:
+                    EmitTree(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
+                    break;
+                case ObjectType.StoneDeposit:
+                    EmitStoneDeposit(vertices, centre, halfWidth, halfHeight, depth);
+                    break;
+                case ObjectType.IronDeposit:
+                    EmitIronDeposit(vertices, centre, halfWidth, halfHeight, depth);
+                    break;
+                case ObjectType.OilSeep:
+                    EmitOilSeep(vertices, centre, halfWidth, halfHeight, depth);
+                    break;
+                case ObjectType.RareMetalsDeposit:
+                    EmitRareMetalsDeposit(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
+                    break;
+                default:
+                    var colour = ObjectColours.GetColour(obj.Type);
 
-                EmitQuad(
-                    vertices,
-                    centre + Vector2.Normalize(corners[0] - centre) * halfHeight,
-                    centre + Vector2.Normalize(corners[1] - centre) * halfWidth,
-                    centre + Vector2.Normalize(corners[2] - centre) * halfHeight,
-                    centre + Vector2.Normalize(corners[3] - centre) * halfWidth,
-                    depth,
-                    colour);
+                    EmitQuad(
+                        vertices,
+                        centre + Vector2.Normalize(corners[0] - centre) * halfHeight,
+                        centre + Vector2.Normalize(corners[1] - centre) * halfWidth,
+                        centre + Vector2.Normalize(corners[2] - centre) * halfHeight,
+                        centre + Vector2.Normalize(corners[3] - centre) * halfWidth,
+                        depth,
+                        colour);
+                    break;
             }
 
             obj.Dirty = false;
@@ -205,6 +241,50 @@ public sealed class ObjectLayer
         return (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
     }
 
+    private static bool ObjectSitsOnTileSurface(byte type)
+    {
+        return (ObjectType)type is
+            ObjectType.Tree or
+            ObjectType.StoneDeposit or
+            ObjectType.IronDeposit or
+            ObjectType.OilSeep or
+            ObjectType.RareMetalsDeposit;
+    }
+
+    internal static bool IsOccludedByForegroundVoxel(
+        TileMap map,
+        int col,
+        int row,
+        int elevation,
+        float rotationDegrees)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+
+        var mapSize = Math.Max(map.Rows, map.Cols);
+        var objectGroundDepth = IsoMath.TileDepth(col, row, 0, mapSize, rotationDegrees);
+
+        return IsOccludedByForegroundNeighbor(row - 1, col) ||
+               IsOccludedByForegroundNeighbor(row + 1, col) ||
+               IsOccludedByForegroundNeighbor(row, col - 1) ||
+               IsOccludedByForegroundNeighbor(row, col + 1);
+
+        bool IsOccludedByForegroundNeighbor(int neighborRow, int neighborCol)
+        {
+            if ((uint)neighborRow >= (uint)map.Rows || (uint)neighborCol >= (uint)map.Cols)
+            {
+                return false;
+            }
+
+            if (map.Elevation[neighborRow, neighborCol] <= elevation)
+            {
+                return false;
+            }
+
+            var neighborGroundDepth = IsoMath.TileDepth(neighborCol, neighborRow, 0, mapSize, rotationDegrees);
+            return neighborGroundDepth < objectGroundDepth;
+        }
+    }
+
     private static void EmitTree(
         List<float> vertices,
         Vector2 centre,
@@ -219,7 +299,7 @@ public sealed class ObjectLayer
         var trunkHalfWidth = Math.Max(2f, halfWidth * 0.14f);
         var trunkBottom = centre + new Vector2(0f, halfHeight * 0.26f);
         var trunkTop = centre - new Vector2(0f, treeHeight * 0.62f);
-        var trunkDepth = Math.Clamp(depth - 0.001f, 0f, 1f);
+        var trunkDepth = Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f);
 
         EmitQuad(
             vertices,
@@ -233,7 +313,7 @@ public sealed class ObjectLayer
         var canopyCentre = centre - new Vector2(0f, treeHeight * 0.78f);
         var canopyHalfWidth = halfWidth * 0.88f;
         var canopyHalfHeight = halfHeight * 0.95f;
-        var canopyDepth = Math.Clamp(depth - 0.003f, 0f, 1f);
+        var canopyDepth = Math.Clamp(depth - ObjectLayerDepthStep * 3f, 0f, 1f);
 
         EmitQuad(
             vertices,
@@ -250,8 +330,227 @@ public sealed class ObjectLayer
             canopyCentre + new Vector2(canopyHalfWidth * 0.72f, 0f),
             canopyCentre + new Vector2(0f, canopyHalfHeight * 0.58f),
             canopyCentre - new Vector2(canopyHalfWidth * 0.72f, 0f),
-            Math.Clamp(canopyDepth - 0.001f, 0f, 1f),
+            Math.Clamp(canopyDepth - ObjectLayerDepthStep, 0f, 1f),
             TreeCanopyColour);
+    }
+
+    private static void EmitStoneDeposit(List<float> vertices, Vector2 centre, float halfWidth, float halfHeight, float depth)
+    {
+        EmitRock(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.02f),
+            halfWidth * 0.28f,
+            halfHeight * 0.40f,
+            Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f),
+            StoneLightColour,
+            StoneMidColour,
+            StoneDarkColour);
+
+        EmitRock(
+            vertices,
+            centre + new Vector2(halfWidth * 0.18f, -halfHeight * 0.06f),
+            halfWidth * 0.34f,
+            halfHeight * 0.48f,
+            Math.Clamp(depth - ObjectLayerDepthStep * 3f, 0f, 1f),
+            StoneLightColour,
+            StoneMidColour,
+            StoneDarkColour);
+
+        EmitRock(
+            vertices,
+            centre + new Vector2(halfWidth * 0.42f, halfHeight * 0.12f),
+            halfWidth * 0.20f,
+            halfHeight * 0.30f,
+            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
+            StoneLightColour,
+            StoneMidColour,
+            StoneDarkColour);
+    }
+
+    private static void EmitIronDeposit(List<float> vertices, Vector2 centre, float halfWidth, float halfHeight, float depth)
+    {
+        EmitFlatDiamond(
+            vertices,
+            centre + new Vector2(0f, halfHeight * 0.26f),
+            halfWidth * 0.58f,
+            halfHeight * 0.28f,
+            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
+            ShadowColour);
+
+        EmitShard(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.14f),
+            halfWidth * 0.24f,
+            halfHeight * 0.76f,
+            Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f),
+            IronLightColour,
+            IronMidColour,
+            IronDarkColour);
+
+        EmitShard(
+            vertices,
+            centre + new Vector2(halfWidth * 0.08f, halfHeight * 0.16f),
+            halfWidth * 0.34f,
+            halfHeight * 0.92f,
+            Math.Clamp(depth - ObjectLayerDepthStep * 3f, 0f, 1f),
+            IronLightColour,
+            IronMidColour,
+            IronDarkColour);
+
+        EmitShard(
+            vertices,
+            centre + new Vector2(halfWidth * 0.36f, halfHeight * 0.20f),
+            halfWidth * 0.22f,
+            halfHeight * 0.62f,
+            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
+            IronLightColour,
+            IronMidColour,
+            IronDarkColour);
+    }
+
+    private static void EmitOilSeep(List<float> vertices, Vector2 centre, float halfWidth, float halfHeight, float depth)
+    {
+        var poolDepth = Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.18f, -halfHeight * 0.30f),
+            centre + new Vector2(halfWidth * 0.54f, -halfHeight * 0.08f),
+            centre + new Vector2(halfWidth * 0.42f, halfHeight * 0.36f),
+            centre + new Vector2(-halfWidth * 0.48f, halfHeight * 0.30f),
+            poolDepth,
+            OilColour);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(halfWidth * 0.04f, -halfHeight * 0.18f),
+            centre + new Vector2(halfWidth * 0.34f, -halfHeight * 0.08f),
+            centre + new Vector2(halfWidth * 0.20f, halfHeight * 0.03f),
+            centre + new Vector2(-halfWidth * 0.05f, -halfHeight * 0.03f),
+            Math.Clamp(poolDepth - ObjectLayerDepthStep, 0f, 1f),
+            OilHighlightColour);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.34f, halfHeight * 0.05f),
+            centre + new Vector2(-halfWidth * 0.14f, halfHeight * 0.10f),
+            centre + new Vector2(-halfWidth * 0.20f, halfHeight * 0.20f),
+            centre + new Vector2(-halfWidth * 0.40f, halfHeight * 0.18f),
+            Math.Clamp(poolDepth - ObjectLayerDepthStep * 2f, 0f, 1f),
+            OilHighlightColour * 0.72f);
+    }
+
+    private static void EmitRareMetalsDeposit(
+        List<float> vertices,
+        Vector2 centre,
+        float halfWidth,
+        float halfHeight,
+        float depth,
+        ViewProjectionMode projectionMode)
+    {
+        var crystalHeight = projectionMode == ViewProjectionMode.TopDown
+            ? halfHeight * 1.16f
+            : IsoMath.ElevStep * 1.12f;
+
+        EmitFlatDiamond(
+            vertices,
+            centre + new Vector2(0f, halfHeight * 0.28f),
+            halfWidth * 0.48f,
+            halfHeight * 0.22f,
+            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
+            ShadowColour);
+
+        EmitCrystal(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.10f),
+            halfWidth * 0.20f,
+            crystalHeight * 0.72f,
+            Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f));
+
+        EmitCrystal(
+            vertices,
+            centre + new Vector2(halfWidth * 0.06f, halfHeight * 0.14f),
+            halfWidth * 0.28f,
+            crystalHeight,
+            Math.Clamp(depth - ObjectLayerDepthStep * 4f, 0f, 1f));
+
+        EmitCrystal(
+            vertices,
+            centre + new Vector2(halfWidth * 0.32f, halfHeight * 0.17f),
+            halfWidth * 0.18f,
+            crystalHeight * 0.58f,
+            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f));
+    }
+
+    private static void EmitRock(
+        List<float> vertices,
+        Vector2 baseCentre,
+        float halfWidth,
+        float height,
+        float depth,
+        Vector3 lightColour,
+        Vector3 midColour,
+        Vector3 darkColour)
+    {
+        var top = baseCentre - new Vector2(0f, height);
+        var left = baseCentre - new Vector2(halfWidth, height * 0.22f);
+        var right = baseCentre + new Vector2(halfWidth, -height * 0.18f);
+        var bottom = baseCentre + new Vector2(0f, height * 0.20f);
+        var mid = baseCentre - new Vector2(0f, height * 0.26f);
+
+        EmitTriangle(vertices, top, left, mid, Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f), lightColour);
+        EmitTriangle(vertices, top, mid, right, Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f), midColour);
+        EmitQuad(vertices, left, mid, right, bottom, depth, darkColour);
+    }
+
+    private static void EmitShard(
+        List<float> vertices,
+        Vector2 baseCentre,
+        float halfWidth,
+        float height,
+        float depth,
+        Vector3 lightColour,
+        Vector3 midColour,
+        Vector3 darkColour)
+    {
+        var tip = baseCentre - new Vector2(halfWidth * 0.10f, height);
+        var left = baseCentre - new Vector2(halfWidth, 0f);
+        var right = baseCentre + new Vector2(halfWidth, -height * 0.04f);
+        var centreLine = baseCentre - new Vector2(halfWidth * 0.04f, height * 0.22f);
+
+        EmitTriangle(vertices, tip, left, centreLine, Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f), lightColour);
+        EmitTriangle(vertices, tip, centreLine, right, Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f), midColour);
+        EmitTriangle(vertices, left, right, baseCentre + new Vector2(0f, height * 0.10f), depth, darkColour);
+    }
+
+    private static void EmitCrystal(List<float> vertices, Vector2 baseCentre, float halfWidth, float height, float depth)
+    {
+        var tip = baseCentre - new Vector2(0f, height);
+        var left = baseCentre - new Vector2(halfWidth, 0f);
+        var right = baseCentre + new Vector2(halfWidth, 0f);
+        var ridge = baseCentre - new Vector2(halfWidth * 0.18f, height * 0.22f);
+
+        EmitTriangle(vertices, tip, left, ridge, Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f), RareMetalsLightColour);
+        EmitTriangle(vertices, tip, ridge, right, Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f), RareMetalsMidColour);
+        EmitTriangle(vertices, left, right, baseCentre + new Vector2(0f, halfWidth * 0.22f), depth, RareMetalsDarkColour);
+    }
+
+    private static void EmitFlatDiamond(
+        List<float> vertices,
+        Vector2 centre,
+        float halfWidth,
+        float halfHeight,
+        float depth,
+        Vector3 colour)
+    {
+        EmitQuad(
+            vertices,
+            centre - new Vector2(0f, halfHeight),
+            centre + new Vector2(halfWidth, 0f),
+            centre + new Vector2(0f, halfHeight),
+            centre - new Vector2(halfWidth, 0f),
+            depth,
+            colour);
     }
 
     private static void EmitQuad(
@@ -269,6 +568,13 @@ public sealed class ObjectLayer
         EmitVertex(vertices, a, depth, colour);
         EmitVertex(vertices, c, depth, colour);
         EmitVertex(vertices, d, depth, colour);
+    }
+
+    private static void EmitTriangle(List<float> vertices, Vector2 a, Vector2 b, Vector2 c, float depth, Vector3 colour)
+    {
+        EmitVertex(vertices, a, depth, colour);
+        EmitVertex(vertices, b, depth, colour);
+        EmitVertex(vertices, c, depth, colour);
     }
 
     private static void EmitVertex(List<float> vertices, Vector2 point, float depth, Vector3 colour)

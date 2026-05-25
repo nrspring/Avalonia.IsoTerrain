@@ -90,6 +90,27 @@ public sealed class IsoMathTests
         AssertClose(row, tile.Y);
     }
 
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(45f)]
+    [InlineData(90f)]
+    [InlineData(135f)]
+    [InlineData(180f)]
+    [InlineData(225f)]
+    [InlineData(270f)]
+    [InlineData(315f)]
+    public void TileDepthStaysInsideClipRangeForRotatedMaps(float rotationDegrees)
+    {
+        const int mapSize = 1000;
+
+        foreach (var (col, row) in new[] { (0, 0), (999, 0), (0, 999), (999, 999), (500, 500) })
+        {
+            var depth = IsoMath.TileDepth(col, row, TileMap.MaxElevation, mapSize, rotationDegrees);
+
+            Assert.InRange(depth, -1f, 1f);
+        }
+    }
+
     [Fact]
     public void FitMapToViewportCentersAndExpandsFlatMap()
     {

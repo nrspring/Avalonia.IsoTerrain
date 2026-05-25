@@ -273,7 +273,7 @@ public static class TileBatcher
                 }
 
                 tileCount++;
-                var depth = IsoMath.TileDepth(col, row, elev, mapSize);
+                var depth = IsoMath.TileDepth(col, row, elev, mapSize, rotationDegrees);
                 var isVoxelMode = renderMode == TerrainRenderMode.Voxel;
                 Vector2[]? voxelTopCorners = null;
                 ReadOnlySpan<Vector2> topCorners;
@@ -436,7 +436,8 @@ public static class TileBatcher
                     summary.CentreCol,
                     summary.CentreRow,
                     summary.RepresentativeElevation,
-                    mapSize);
+                    mapSize,
+                    rotationDegrees);
 
                 bounds = hasBounds ? RectangleF.Union(bounds, tileBounds) : tileBounds;
                 hasBounds = true;
@@ -735,7 +736,7 @@ public static class TileBatcher
 
                 visibleTiles++;
                 var tileType = map.TileType[row, col];
-                var depth = IsoMath.TileDepth(col, row, elev, mapSize);
+                var depth = IsoMath.TileDepth(col, row, elev, mapSize, rotationDegrees);
                 var topCorners = IsoMath.SmoothedTopFaceCorners(map, col, row, zoom, rotationDegrees, projectionMode);
                 var colours = TileColours.GetFaceColours(tileType, elev, TerrainRenderMode.Terrain, row, col);
                 var borderColour = showTerrainTileBorders

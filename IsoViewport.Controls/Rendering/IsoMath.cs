@@ -209,7 +209,8 @@ public static class IsoMath
                     candidateCol,
                     candidateRow,
                     map.Elevation[candidateRow, candidateCol],
-                    Math.Max(map.Rows, map.Cols));
+                    Math.Max(map.Rows, map.Cols),
+                    rotationDegrees);
 
                 if (!found || depth < bestDepth)
                 {
@@ -224,15 +225,19 @@ public static class IsoMath
         return found;
     }
 
-    public static float TileDepth(int col, int row, int elev, int mapSize)
+    public static float TileDepth(int col, int row, int elev, int mapSize, float rotationDegrees = 0f)
     {
         if (mapSize <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(mapSize), mapSize, "Map size must be greater than zero.");
         }
 
-        var raw = row + col + elev * 0.5f;
-        var max = (mapSize - 1) * 2f + TileMap.MaxElevation * 0.5f;
+        var groundExtent = MathF.Max(1f, mapSize - 1);
+        var mapCentre = (mapSize - 1) * 0.5f;
+        var rotatedGround = RotateGround(new Vector2(col - mapCentre, row - mapCentre), rotationDegrees);
+        var groundDepth = rotatedGround.X + rotatedGround.Y;
+        var raw = groundDepth + groundExtent + elev * 0.5f;
+        var max = groundExtent * 2f + TileMap.MaxElevation * 0.5f;
         return max <= 0f ? 1f : 1f - (raw / max);
     }
 
