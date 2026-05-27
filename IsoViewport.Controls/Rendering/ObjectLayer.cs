@@ -125,6 +125,13 @@ public sealed class ObjectLayer
             var halfHeight = Vector2.Distance(corners[0], corners[2]) * 0.25f;
             var depth = Math.Clamp(IsoMath.TileDepth(obj.Col, obj.Row, elevation, mapSize, rotationDegrees) - ObjectDepthBias, 0f, 1f);
 
+            if (renderMode is TerrainRenderMode.Heat or TerrainRenderMode.Topographical)
+            {
+                EmitElementTileOverlay(vertices, corners, centre, depth, obj.Type);
+                obj.Dirty = false;
+                continue;
+            }
+
             switch ((ObjectType)obj.Type)
             {
                 case ObjectType.Tree:
@@ -256,6 +263,26 @@ public sealed class ObjectLayer
             ObjectType.OilSeep or
             ObjectType.RareMetalsDeposit or
             ObjectType.SwampReeds;
+    }
+
+    private static void EmitElementTileOverlay(
+        List<float> vertices,
+        ReadOnlySpan<Vector2> corners,
+        Vector2 centre,
+        float depth,
+        byte objectType)
+    {
+        const float inset = 0.12f;
+        var colour = ObjectColours.GetColour(objectType);
+
+        EmitQuad(
+            vertices,
+            Vector2.Lerp(corners[0], centre, inset),
+            Vector2.Lerp(corners[1], centre, inset),
+            Vector2.Lerp(corners[2], centre, inset),
+            Vector2.Lerp(corners[3], centre, inset),
+            depth,
+            colour);
     }
 
     internal static bool IsOccludedByForegroundVoxel(
