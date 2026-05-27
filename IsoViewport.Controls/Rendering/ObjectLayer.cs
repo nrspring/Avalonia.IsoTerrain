@@ -6,8 +6,8 @@ namespace IsoViewport.Controls.Rendering;
 public sealed class ObjectLayer
 {
     private const uint VertexStrideBytes = 24;
-    private const float ObjectDepthBias = 0.00001f;
-    private const float ObjectLayerDepthStep = 0.000005f;
+    private const float ObjectDepthBias = 0.001f;
+    private const float ObjectLayerDepthStep = 0.00005f;
     private static readonly Vector3 TreeCanopyColour = new(0.03f, 0.44f, 0.26f);
     private static readonly Vector3 TreeCanopyShadeColour = new(0.02f, 0.30f, 0.18f);
     private static readonly Vector3 TreeTrunkColour = new(0.34f, 0.20f, 0.10f);
