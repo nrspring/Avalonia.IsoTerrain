@@ -338,9 +338,9 @@ public sealed class ObjectLayer
     {
         EmitRock(
             vertices,
-            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.02f),
-            halfWidth * 0.28f,
-            halfHeight * 0.40f,
+            centre + new Vector2(-halfWidth * 0.30f, halfHeight * 0.04f),
+            halfWidth * 0.36f,
+            halfHeight * 0.52f,
             Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f),
             StoneLightColour,
             StoneMidColour,
@@ -348,9 +348,9 @@ public sealed class ObjectLayer
 
         EmitRock(
             vertices,
-            centre + new Vector2(halfWidth * 0.18f, -halfHeight * 0.06f),
-            halfWidth * 0.34f,
-            halfHeight * 0.48f,
+            centre + new Vector2(halfWidth * 0.16f, -halfHeight * 0.08f),
+            halfWidth * 0.44f,
+            halfHeight * 0.62f,
             Math.Clamp(depth - ObjectLayerDepthStep * 3f, 0f, 1f),
             StoneLightColour,
             StoneMidColour,
@@ -358,9 +358,9 @@ public sealed class ObjectLayer
 
         EmitRock(
             vertices,
-            centre + new Vector2(halfWidth * 0.42f, halfHeight * 0.12f),
-            halfWidth * 0.20f,
-            halfHeight * 0.30f,
+            centre + new Vector2(halfWidth * 0.44f, halfHeight * 0.14f),
+            halfWidth * 0.26f,
+            halfHeight * 0.40f,
             Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
             StoneLightColour,
             StoneMidColour,
@@ -411,33 +411,62 @@ public sealed class ObjectLayer
     private static void EmitOilSeep(List<float> vertices, Vector2 centre, float halfWidth, float halfHeight, float depth)
     {
         var poolDepth = Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f);
+        var sheenDepth = Math.Clamp(poolDepth - ObjectLayerDepthStep, 0f, 1f);
+        var edgeColour = OilColour * 0.74f;
 
         EmitQuad(
             vertices,
-            centre + new Vector2(-halfWidth * 0.18f, -halfHeight * 0.30f),
-            centre + new Vector2(halfWidth * 0.54f, -halfHeight * 0.08f),
-            centre + new Vector2(halfWidth * 0.42f, halfHeight * 0.36f),
-            centre + new Vector2(-halfWidth * 0.48f, halfHeight * 0.30f),
+            centre + new Vector2(-halfWidth * 0.78f, -halfHeight * 0.08f),
+            centre + new Vector2(-halfWidth * 0.14f, -halfHeight * 0.40f),
+            centre + new Vector2(halfWidth * 0.58f, -halfHeight * 0.30f),
+            centre + new Vector2(halfWidth * 0.82f, halfHeight * 0.08f),
+            poolDepth,
+            edgeColour);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.78f, -halfHeight * 0.08f),
+            centre + new Vector2(halfWidth * 0.82f, halfHeight * 0.08f),
+            centre + new Vector2(halfWidth * 0.40f, halfHeight * 0.42f),
+            centre + new Vector2(-halfWidth * 0.54f, halfHeight * 0.36f),
+            poolDepth,
+            edgeColour);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.52f, -halfHeight * 0.06f),
+            centre + new Vector2(-halfWidth * 0.04f, -halfHeight * 0.26f),
+            centre + new Vector2(halfWidth * 0.44f, -halfHeight * 0.16f),
+            centre + new Vector2(halfWidth * 0.54f, halfHeight * 0.08f),
+            Math.Clamp(poolDepth - ObjectLayerDepthStep * 0.5f, 0f, 1f),
+            OilColour);
+
+        EmitQuad(
+            vertices,
+            centre + new Vector2(-halfWidth * 0.52f, -halfHeight * 0.06f),
+            centre + new Vector2(halfWidth * 0.54f, halfHeight * 0.08f),
+            centre + new Vector2(halfWidth * 0.28f, halfHeight * 0.26f),
+            centre + new Vector2(-halfWidth * 0.36f, halfHeight * 0.22f),
             poolDepth,
             OilColour);
 
         EmitQuad(
             vertices,
-            centre + new Vector2(halfWidth * 0.04f, -halfHeight * 0.18f),
-            centre + new Vector2(halfWidth * 0.34f, -halfHeight * 0.08f),
-            centre + new Vector2(halfWidth * 0.20f, halfHeight * 0.03f),
-            centre + new Vector2(-halfWidth * 0.05f, -halfHeight * 0.03f),
-            Math.Clamp(poolDepth - ObjectLayerDepthStep, 0f, 1f),
+            centre + new Vector2(-halfWidth * 0.16f, -halfHeight * 0.20f),
+            centre + new Vector2(halfWidth * 0.34f, -halfHeight * 0.13f),
+            centre + new Vector2(halfWidth * 0.22f, -halfHeight * 0.03f),
+            centre + new Vector2(-halfWidth * 0.26f, -halfHeight * 0.08f),
+            sheenDepth,
             OilHighlightColour);
 
         EmitQuad(
             vertices,
-            centre + new Vector2(-halfWidth * 0.34f, halfHeight * 0.05f),
-            centre + new Vector2(-halfWidth * 0.14f, halfHeight * 0.10f),
-            centre + new Vector2(-halfWidth * 0.20f, halfHeight * 0.20f),
-            centre + new Vector2(-halfWidth * 0.40f, halfHeight * 0.18f),
-            Math.Clamp(poolDepth - ObjectLayerDepthStep * 2f, 0f, 1f),
-            OilHighlightColour * 0.72f);
+            centre + new Vector2(-halfWidth * 0.52f, halfHeight * 0.08f),
+            centre + new Vector2(-halfWidth * 0.20f, halfHeight * 0.12f),
+            centre + new Vector2(-halfWidth * 0.26f, halfHeight * 0.20f),
+            centre + new Vector2(-halfWidth * 0.56f, halfHeight * 0.18f),
+            Math.Clamp(sheenDepth - ObjectLayerDepthStep, 0f, 1f),
+            OilHighlightColour * 0.58f);
     }
 
     private static void EmitRareMetalsDeposit(
