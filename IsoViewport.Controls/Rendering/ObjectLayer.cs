@@ -23,6 +23,9 @@ public sealed class ObjectLayer
     private static readonly Vector3 RareMetalsLightColour = new(0.62f, 0.93f, 0.98f);
     private static readonly Vector3 RareMetalsMidColour = new(0.25f, 0.66f, 0.74f);
     private static readonly Vector3 RareMetalsDarkColour = new(0.11f, 0.36f, 0.43f);
+    private static readonly Vector3 ReedLightColour = new(0.74f, 0.74f, 0.30f);
+    private static readonly Vector3 ReedDarkColour = new(0.36f, 0.42f, 0.16f);
+    private static readonly Vector3 CattailColour = new(0.24f, 0.14f, 0.06f);
 
     private readonly List<TileObject> _objects = [];
     private uint _vbo;
@@ -139,6 +142,9 @@ public sealed class ObjectLayer
                 case ObjectType.RareMetalsDeposit:
                     EmitRareMetalsDeposit(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
                     break;
+                case ObjectType.SwampReeds:
+                    EmitSwampReeds(vertices, centre, halfWidth, halfHeight, depth, projectionMode);
+                    break;
                 default:
                     var colour = ObjectColours.GetColour(obj.Type);
 
@@ -248,7 +254,8 @@ public sealed class ObjectLayer
             ObjectType.StoneDeposit or
             ObjectType.IronDeposit or
             ObjectType.OilSeep or
-            ObjectType.RareMetalsDeposit;
+            ObjectType.RareMetalsDeposit or
+            ObjectType.SwampReeds;
     }
 
     internal static bool IsOccludedByForegroundVoxel(
@@ -369,14 +376,6 @@ public sealed class ObjectLayer
 
     private static void EmitIronDeposit(List<float> vertices, Vector2 centre, float halfWidth, float halfHeight, float depth)
     {
-        EmitFlatDiamond(
-            vertices,
-            centre + new Vector2(0f, halfHeight * 0.26f),
-            halfWidth * 0.58f,
-            halfHeight * 0.28f,
-            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
-            ShadowColour);
-
         EmitShard(
             vertices,
             centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.14f),
@@ -478,37 +477,59 @@ public sealed class ObjectLayer
         ViewProjectionMode projectionMode)
     {
         var crystalHeight = projectionMode == ViewProjectionMode.TopDown
-            ? halfHeight * 1.16f
-            : IsoMath.ElevStep * 1.12f;
-
-        EmitFlatDiamond(
-            vertices,
-            centre + new Vector2(0f, halfHeight * 0.28f),
-            halfWidth * 0.48f,
-            halfHeight * 0.22f,
-            Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f),
-            ShadowColour);
+            ? halfHeight * 0.84f
+            : IsoMath.ElevStep * 0.72f;
 
         EmitCrystal(
             vertices,
-            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.10f),
+            centre + new Vector2(-halfWidth * 0.28f, halfHeight * 0.14f),
             halfWidth * 0.20f,
             crystalHeight * 0.72f,
             Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f));
 
         EmitCrystal(
             vertices,
-            centre + new Vector2(halfWidth * 0.06f, halfHeight * 0.14f),
+            centre + new Vector2(halfWidth * 0.06f, halfHeight * 0.18f),
             halfWidth * 0.28f,
             crystalHeight,
             Math.Clamp(depth - ObjectLayerDepthStep * 4f, 0f, 1f));
 
         EmitCrystal(
             vertices,
-            centre + new Vector2(halfWidth * 0.32f, halfHeight * 0.17f),
+            centre + new Vector2(halfWidth * 0.32f, halfHeight * 0.19f),
             halfWidth * 0.18f,
             crystalHeight * 0.58f,
             Math.Clamp(depth - ObjectLayerDepthStep, 0f, 1f));
+    }
+
+    private static void EmitSwampReeds(
+        List<float> vertices,
+        Vector2 centre,
+        float halfWidth,
+        float halfHeight,
+        float depth,
+        ViewProjectionMode projectionMode)
+    {
+        var reedHeight = projectionMode == ViewProjectionMode.TopDown
+            ? halfHeight * 1.05f
+            : IsoMath.ElevStep * 0.86f;
+        var reedWidth = Math.Max(1.5f, halfWidth * 0.045f);
+        var baseCentre = centre + new Vector2(0f, halfHeight * 0.16f);
+        var reedDepth = Math.Clamp(depth - ObjectLayerDepthStep * 2f, 0f, 1f);
+
+        EmitScreenStroke(vertices, baseCentre, baseCentre + new Vector2(-halfWidth * 0.04f, -reedHeight), reedWidth, reedDepth, ReedLightColour);
+        EmitScreenStroke(vertices, baseCentre + new Vector2(halfWidth * 0.13f, halfHeight * 0.04f), baseCentre + new Vector2(halfWidth * 0.22f, -reedHeight * 0.82f), reedWidth * 0.9f, reedDepth, ReedLightColour * 0.92f);
+        EmitScreenStroke(vertices, baseCentre + new Vector2(-halfWidth * 0.12f, halfHeight * 0.05f), baseCentre + new Vector2(-halfWidth * 0.24f, -reedHeight * 0.74f), reedWidth * 0.9f, reedDepth, ReedDarkColour);
+        EmitScreenStroke(vertices, baseCentre + new Vector2(halfWidth * 0.28f, halfHeight * 0.08f), baseCentre + new Vector2(halfWidth * 0.20f, -reedHeight * 0.55f), reedWidth * 0.76f, reedDepth, ReedDarkColour * 0.92f);
+
+        EmitQuad(
+            vertices,
+            baseCentre + new Vector2(halfWidth * 0.18f, -reedHeight * 0.80f),
+            baseCentre + new Vector2(halfWidth * 0.30f, -reedHeight * 0.74f),
+            baseCentre + new Vector2(halfWidth * 0.28f, -reedHeight * 0.48f),
+            baseCentre + new Vector2(halfWidth * 0.16f, -reedHeight * 0.54f),
+            Math.Clamp(reedDepth - ObjectLayerDepthStep, 0f, 1f),
+            CattailColour);
     }
 
     private static void EmitRock(
@@ -580,6 +601,25 @@ public sealed class ObjectLayer
             centre - new Vector2(halfWidth, 0f),
             depth,
             colour);
+    }
+
+    private static void EmitScreenStroke(
+        List<float> vertices,
+        Vector2 start,
+        Vector2 end,
+        float halfWidth,
+        float depth,
+        Vector3 colour)
+    {
+        var direction = end - start;
+
+        if (direction.LengthSquared() < 0.0001f)
+        {
+            return;
+        }
+
+        var normal = Vector2.Normalize(new Vector2(-direction.Y, direction.X)) * halfWidth;
+        EmitQuad(vertices, start - normal, start + normal, end + normal, end - normal, depth, colour);
     }
 
     private static void EmitQuad(

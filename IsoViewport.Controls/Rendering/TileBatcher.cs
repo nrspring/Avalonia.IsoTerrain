@@ -145,6 +145,8 @@ public static class TileBatcher
     private const float CardinalShoreWeight = 1f;
     private const float DiagonalShoreWeight = 0.65f;
     private const float MaxShoreWeight = CardinalShoreWeight * 4f + DiagonalShoreWeight * 4f;
+    private static readonly Vector3 SwampWetPatchColour = new(0.02f, 0.09f, 0.11f);
+    private static readonly Vector3 SwampReedColour = new(0.78f, 0.76f, 0.30f);
 
     public static float[] BuildVertexData(
         TileMap map,
@@ -333,6 +335,12 @@ public static class TileBatcher
                             : colours.top,
                     };
                     EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
+
+                    if ((TileType)tileType == TileType.Swamp && renderMode == TerrainRenderMode.Terrain)
+                    {
+                        EmitSwampDetails(vertices, topCorners, depth, row, col);
+                    }
+
                     if (projectionMode == ViewProjectionMode.Isometric)
                     {
                         if (isVoxelMode)
@@ -453,6 +461,11 @@ public static class TileBatcher
                 if (renderMode == TerrainRenderMode.Terrain)
                 {
                     EmitFilledQuad(vertices, topCorners, depth, colours.top);
+                    if ((TileType)summary.DominantTileType == TileType.Swamp)
+                    {
+                        EmitSwampDetails(vertices, topCorners, depth, summary.CentreRow, summary.CentreCol);
+                    }
+
                     continue;
                 }
 
@@ -744,6 +757,11 @@ public static class TileBatcher
                     : colours.top;
 
                 EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
+                if ((TileType)tileType == TileType.Swamp)
+                {
+                    EmitSwampDetails(vertices, topCorners, depth, row, col);
+                }
+
                 if (projectionMode == ViewProjectionMode.Isometric)
                 {
                     EmitLeftFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.left);
@@ -1012,6 +1030,204 @@ public static class TileBatcher
         var innerLeft = Vector2.Lerp(topCorners[3], centre, TopInsetFactor);
 
         EmitQuad(vertices, innerTop, innerRight, innerBottom, innerLeft, innerDepth, fillColour);
+    }
+
+    private static void EmitSwampDetails(
+        List<float> vertices,
+        ReadOnlySpan<Vector2> topCorners,
+        float depth,
+        int row,
+        int col)
+    {
+        var centre = (topCorners[0] + topCorners[1] + topCorners[2] + topCorners[3]) * 0.25f;
+        var eastAxis = (topCorners[1] - topCorners[3]) * 0.5f;
+        var southAxis = (topCorners[2] - topCorners[0]) * 0.5f;
+        var detailDepth = Math.Max(0f, depth - TopInsetDepthBias - 0.0005f);
+        var reedDepth = Math.Max(0f, detailDepth - 0.0002f);
+        var wetOffset = new Vector2(HashSigned(row, col, 0x4711) * 0.08f, HashSigned(row, col, 0x6721) * 0.06f);
+        var reedOffset = new Vector2(HashSigned(row, col, 0x8923) * 0.12f, HashSigned(row, col, 0xA531) * 0.10f);
+
+        EmitLocalDiamond(
+            vertices,
+            centre,
+            eastAxis,
+            southAxis,
+            wetOffset,
+            0.42f,
+            0.23f,
+            detailDepth,
+            SwampWetPatchColour);
+
+        EmitLocalDiamond(
+            vertices,
+            centre,
+            eastAxis,
+            southAxis,
+            wetOffset + new Vector2(-0.22f, 0.14f),
+            0.24f,
+            0.13f,
+            detailDepth,
+            SwampWetPatchColour * 0.72f);
+
+        EmitLocalDiamond(
+            vertices,
+            centre,
+            eastAxis,
+            southAxis,
+            wetOffset + new Vector2(0.24f, -0.12f),
+            0.22f,
+            0.12f,
+            detailDepth,
+            SwampWetPatchColour * 0.88f);
+
+        EmitLocalStroke(
+            vertices,
+            centre,
+            eastAxis,
+            southAxis,
+            wetOffset + new Vector2(-0.34f, -0.02f),
+            wetOffset + new Vector2(0.34f, 0.10f),
+            0.055f,
+            Math.Max(0f, detailDepth - 0.0001f),
+            SwampWetPatchColour * 1.18f);
+
+        var reedBase = reedOffset + new Vector2(0.16f, -0.04f);
+        var reedAnchor = centre + eastAxis * reedBase.X + southAxis * reedBase.Y;
+        var reedHeight = Math.Max(5f, southAxis.Length() * 0.72f);
+        var reedWidth = Math.Max(1.4f, eastAxis.Length() * 0.030f);
+
+        EmitScreenStroke(
+            vertices,
+            reedAnchor,
+            reedAnchor + new Vector2(-reedWidth * 0.30f, -reedHeight),
+            reedWidth,
+            reedDepth,
+            SwampReedColour);
+        EmitScreenStroke(
+            vertices,
+            reedAnchor + new Vector2(eastAxis.Length() * 0.075f, southAxis.Length() * 0.030f),
+            reedAnchor + new Vector2(eastAxis.Length() * 0.15f, -reedHeight * 0.88f),
+            reedWidth * 0.88f,
+            reedDepth,
+            SwampReedColour * 0.92f);
+        EmitScreenStroke(
+            vertices,
+            reedAnchor + new Vector2(-eastAxis.Length() * 0.070f, southAxis.Length() * 0.050f),
+            reedAnchor + new Vector2(-eastAxis.Length() * 0.15f, -reedHeight * 0.80f),
+            reedWidth * 0.88f,
+            reedDepth,
+            SwampReedColour * 0.86f);
+        EmitScreenStroke(
+            vertices,
+            reedAnchor + new Vector2(eastAxis.Length() * 0.15f, southAxis.Length() * 0.065f),
+            reedAnchor + new Vector2(eastAxis.Length() * 0.10f, -reedHeight * 0.62f),
+            reedWidth * 0.72f,
+            reedDepth,
+            SwampReedColour * 0.78f);
+
+        EmitCattail(
+            vertices,
+            reedAnchor + new Vector2(eastAxis.Length() * 0.15f, -reedHeight * 0.82f),
+            Math.Max(1.8f, eastAxis.Length() * 0.045f),
+            Math.Max(4f, reedHeight * 0.20f),
+            Math.Max(0f, reedDepth - 0.0001f));
+    }
+
+    private static void EmitLocalDiamond(
+        List<float> vertices,
+        Vector2 centre,
+        Vector2 eastAxis,
+        Vector2 southAxis,
+        Vector2 offset,
+        float halfWidth,
+        float halfHeight,
+        float depth,
+        Vector3 colour)
+    {
+        var localCentre = centre + eastAxis * offset.X + southAxis * offset.Y;
+        EmitQuad(
+            vertices,
+            localCentre - southAxis * halfHeight,
+            localCentre + eastAxis * halfWidth,
+            localCentre + southAxis * halfHeight,
+            localCentre - eastAxis * halfWidth,
+            depth,
+            colour);
+    }
+
+    private static void EmitLocalStroke(
+        List<float> vertices,
+        Vector2 centre,
+        Vector2 eastAxis,
+        Vector2 southAxis,
+        Vector2 from,
+        Vector2 to,
+        float width,
+        float depth,
+        Vector3 colour)
+    {
+        var start = centre + eastAxis * from.X + southAxis * from.Y;
+        var end = centre + eastAxis * to.X + southAxis * to.Y;
+        var direction = end - start;
+
+        if (direction.LengthSquared() < 0.0001f)
+        {
+            return;
+        }
+
+        var normal = Vector2.Normalize(new Vector2(-direction.Y, direction.X)) * width * eastAxis.Length();
+        EmitQuad(vertices, start - normal, start + normal, end + normal, end - normal, depth, colour);
+    }
+
+    private static void EmitScreenStroke(
+        List<float> vertices,
+        Vector2 start,
+        Vector2 end,
+        float halfWidth,
+        float depth,
+        Vector3 colour)
+    {
+        var direction = end - start;
+
+        if (direction.LengthSquared() < 0.0001f)
+        {
+            return;
+        }
+
+        var normal = Vector2.Normalize(new Vector2(-direction.Y, direction.X)) * halfWidth;
+        EmitQuad(vertices, start - normal, start + normal, end + normal, end - normal, depth, colour);
+    }
+
+    private static void EmitCattail(
+        List<float> vertices,
+        Vector2 centre,
+        float halfWidth,
+        float halfHeight,
+        float depth)
+    {
+        var colour = new Vector3(0.23f, 0.15f, 0.06f);
+        EmitQuad(
+            vertices,
+            centre - new Vector2(halfWidth, halfHeight),
+            centre + new Vector2(halfWidth, -halfHeight * 0.72f),
+            centre + new Vector2(halfWidth, halfHeight),
+            centre - new Vector2(halfWidth, halfHeight * 0.72f),
+            depth,
+            colour);
+    }
+
+    private static float HashSigned(int row, int col, int seed)
+    {
+        unchecked
+        {
+            uint hash = (uint)(row * 374761393);
+            hash = (hash ^ (uint)(col * 668265263)) * 1274126177u;
+            hash ^= (uint)(seed * 224682251);
+            hash ^= hash >> 15;
+            hash *= 2246822519u;
+            hash ^= hash >> 13;
+            return ((hash & 0x00FFFFFFu) / 8388607.5f) - 1f;
+        }
     }
 
     private static void EmitFilledQuad(

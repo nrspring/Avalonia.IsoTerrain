@@ -24,6 +24,7 @@ public enum ObjectType : byte
     IronDeposit = 4,
     OilSeep = 5,
     RareMetalsDeposit = 6,
+    SwampReeds = 7,
 }
 
 public static class ObjectColours
@@ -39,6 +40,7 @@ public static class ObjectColours
             ObjectType.IronDeposit => new Vector3(0.70f, 0.31f, 0.18f),
             ObjectType.OilSeep => new Vector3(0.04f, 0.04f, 0.05f),
             ObjectType.RareMetalsDeposit => new Vector3(0.36f, 0.78f, 0.86f),
+            ObjectType.SwampReeds => new Vector3(0.70f, 0.72f, 0.34f),
             _ => new Vector3(0.95f, 0.25f, 0.25f),
         };
     }
