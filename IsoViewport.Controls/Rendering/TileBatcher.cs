@@ -299,7 +299,7 @@ public static class TileBatcher
                 {
                     var waterMeta = GetAnimatedWaterMetadata(map, row, col);
                     EmitAnimatedWaterTopFace(vertices, topCorners, depth, waterMeta, IsDeepWater(elev));
-                    if (projectionMode == ViewProjectionMode.Isometric)
+                    if (projectionMode != ViewProjectionMode.TopDown)
                     {
                         if (localRow + 1 < tileRows)
                         {
@@ -341,7 +341,7 @@ public static class TileBatcher
                         EmitSwampDetails(vertices, topCorners, depth, row, col);
                     }
 
-                    if (projectionMode == ViewProjectionMode.Isometric)
+                    if (projectionMode != ViewProjectionMode.TopDown)
                     {
                         if (isVoxelMode)
                         {
@@ -612,16 +612,16 @@ public static class TileBatcher
         ViewProjectionMode projectionMode,
         bool useElevation)
     {
-        var topLeftElevation = useElevation && projectionMode == ViewProjectionMode.Isometric
+        var topLeftElevation = useElevation && projectionMode != ViewProjectionMode.TopDown
             ? IsoMath.GridVertexElevation(map, startRow, startCol)
             : 0f;
-        var topRightElevation = useElevation && projectionMode == ViewProjectionMode.Isometric
+        var topRightElevation = useElevation && projectionMode != ViewProjectionMode.TopDown
             ? IsoMath.GridVertexElevation(map, startRow, endCol)
             : 0f;
-        var bottomRightElevation = useElevation && projectionMode == ViewProjectionMode.Isometric
+        var bottomRightElevation = useElevation && projectionMode != ViewProjectionMode.TopDown
             ? IsoMath.GridVertexElevation(map, endRow, endCol)
             : 0f;
-        var bottomLeftElevation = useElevation && projectionMode == ViewProjectionMode.Isometric
+        var bottomLeftElevation = useElevation && projectionMode != ViewProjectionMode.TopDown
             ? IsoMath.GridVertexElevation(map, endRow, startCol)
             : 0f;
 
@@ -762,7 +762,7 @@ public static class TileBatcher
                     EmitSwampDetails(vertices, topCorners, depth, row, col);
                 }
 
-                if (projectionMode == ViewProjectionMode.Isometric)
+                if (projectionMode != ViewProjectionMode.TopDown)
                 {
                     EmitLeftFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.left);
                     EmitRightFace(vertices, map, col, row, zoom, rotationDegrees, projectionMode, topCorners, depth, colours.right);

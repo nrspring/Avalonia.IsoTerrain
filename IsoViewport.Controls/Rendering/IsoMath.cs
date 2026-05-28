@@ -24,6 +24,12 @@ public static class IsoMath
         return normalized;
     }
 
+    public static float SnapToStableObliqueRotationDegrees(float rotationDegrees)
+    {
+        var normalized = NormalizeRotationDegrees(rotationDegrees);
+        return NormalizeRotationDegrees(MathF.Floor((normalized + 45f) / 90f) * 90f);
+    }
+
     public static Vector2 TileToScreen(
         int col,
         int row,
@@ -41,8 +47,13 @@ public static class IsoMath
         float rotationDegrees = 0f,
         ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
     {
-        var rotatedGround = RotateGround(new Vector2(col, row), rotationDegrees);
-        return ProjectTileCentre(rotatedGround.X, rotatedGround.Y, elev, projectionMode);
+        if (projectionMode == ViewProjectionMode.ThreeD)
+        {
+            return ProjectConsistent3D(col, row, elev, rotationDegrees);
+        }
+
+        var projectedRotatedGround = RotateGround(new Vector2(col, row), rotationDegrees);
+        return ProjectTileCentre(projectedRotatedGround.X, projectedRotatedGround.Y, elev, projectionMode);
     }
 
     public static Vector2 GridVertexToScreen(
@@ -80,8 +91,13 @@ public static class IsoMath
             throw new ArgumentOutOfRangeException(nameof(zoom), zoom, "Zoom must be greater than zero.");
         }
 
-        var rotatedGround = UnprojectGround(screenPos, zoom, projectionMode);
-        return RotateGround(rotatedGround, -rotationDegrees);
+        if (projectionMode == ViewProjectionMode.ThreeD)
+        {
+            return UnprojectConsistent3D(screenPos / zoom, rotationDegrees);
+        }
+
+        var projectedRotatedGround = UnprojectGround(screenPos, zoom, projectionMode);
+        return RotateGround(projectedRotatedGround, -rotationDegrees);
     }
 
     public static Vector2[] TopFaceCorners(
@@ -418,6 +434,12 @@ public static class IsoMath
         };
     }
 
+    private static Vector2 ProjectConsistent3D(float col, float row, float elev, float rotationDegrees)
+    {
+        var rotatedGround = RotateGround(new Vector2(col, row), SnapToStableObliqueRotationDegrees(rotationDegrees));
+        return ProjectTileCentre(rotatedGround.X, rotatedGround.Y, elev, ViewProjectionMode.Isometric);
+    }
+
     private static Vector2 UnprojectGround(Vector2 screenPos, float zoom, ViewProjectionMode projectionMode)
     {
         var x = screenPos.X / zoom;
@@ -432,6 +454,12 @@ public static class IsoMath
                 (x / TileHalfW + y / TileHalfH) * 0.5f,
                 (y / TileHalfH - x / TileHalfW) * 0.5f),
         };
+    }
+
+    private static Vector2 UnprojectConsistent3D(Vector2 screenPos, float rotationDegrees)
+    {
+        var rotatedGround = UnprojectGround(screenPos, 1f, ViewProjectionMode.Isometric);
+        return RotateGround(rotatedGround, -SnapToStableObliqueRotationDegrees(rotationDegrees));
     }
 
     private static Vector2 RotateGround(Vector2 ground, float rotationDegrees)

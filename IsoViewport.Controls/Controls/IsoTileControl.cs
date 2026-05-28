@@ -17,6 +17,8 @@ namespace IsoViewport.Controls.Controls;
 
 public sealed class IsoTileControl : OpenGlControlBase
 {
+    private const float KeyboardRotationStepDegrees = 15f;
+
     private enum VboDirtyReason
     {
         None,
@@ -442,14 +444,14 @@ public sealed class IsoTileControl : OpenGlControlBase
 
         if (e.Key == Key.Q)
         {
-            SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(CameraRotationDegrees - 90f));
+            RotateCameraFromKeyboard(-KeyboardRotationStepDegrees);
             e.Handled = true;
             return;
         }
 
         if (e.Key == Key.E)
         {
-            SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(CameraRotationDegrees + 90f));
+            RotateCameraFromKeyboard(KeyboardRotationStepDegrees);
             e.Handled = true;
             return;
         }
@@ -996,6 +998,19 @@ public sealed class IsoTileControl : OpenGlControlBase
         _inertiaDelta = Vector2.Zero;
         SetCurrentValue(CameraRotationDegreesProperty, 0f);
         RequestNextFrameRendering();
+    }
+
+    private void RotateCameraFromKeyboard(float deltaDegrees)
+    {
+        if (ViewProjectionMode == ViewProjectionMode.ThreeD)
+        {
+            var stableRotation = IsoMath.SnapToStableObliqueRotationDegrees(CameraRotationDegrees);
+            var stableDelta = deltaDegrees < 0f ? -90f : 90f;
+            SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(stableRotation + stableDelta));
+            return;
+        }
+
+        SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(CameraRotationDegrees + deltaDegrees));
     }
 
     private void RaiseTileClicked(Point position, MouseButton button)

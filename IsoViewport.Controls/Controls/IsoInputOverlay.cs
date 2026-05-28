@@ -11,6 +11,8 @@ namespace IsoViewport.Controls.Controls;
 
 public sealed class IsoInputOverlay : Border
 {
+    private const float KeyboardRotationStepDegrees = 15f;
+
     public static readonly StyledProperty<TileMap?> TileMapProperty =
         AvaloniaProperty.Register<IsoInputOverlay, TileMap?>(nameof(TileMap));
 
@@ -366,14 +368,14 @@ public sealed class IsoInputOverlay : Border
 
         if (e.Key == Key.Q)
         {
-            RotateCamera(-90f);
+            RotateCamera(-KeyboardRotationStepDegrees);
             e.Handled = true;
             return;
         }
 
         if (e.Key == Key.E)
         {
-            RotateCamera(90f);
+            RotateCamera(KeyboardRotationStepDegrees);
             e.Handled = true;
             return;
         }
@@ -602,6 +604,15 @@ public sealed class IsoInputOverlay : Border
         _autoFitCamera = false;
         _lastFittedViewportWidth = double.NaN;
         _lastFittedViewportHeight = double.NaN;
+
+        if (ViewProjectionMode == ViewProjectionMode.ThreeD)
+        {
+            var stableRotation = IsoMath.SnapToStableObliqueRotationDegrees(CameraRotationDegrees);
+            var stableDelta = deltaDegrees < 0f ? -90f : 90f;
+            SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(stableRotation + stableDelta));
+            return;
+        }
+
         SetCurrentValue(CameraRotationDegreesProperty, IsoMath.NormalizeRotationDegrees(CameraRotationDegrees + deltaDegrees));
     }
 

@@ -112,7 +112,7 @@ public sealed class ObjectLayer
             var elevation = map.Elevation[obj.Row, obj.Col];
 
             if (renderMode == TerrainRenderMode.Voxel &&
-                projectionMode == ViewProjectionMode.Isometric &&
+                projectionMode != ViewProjectionMode.TopDown &&
                 IsOccludedByForegroundVoxel(map, obj.Col, obj.Row, elevation, rotationDegrees))
             {
                 continue;
