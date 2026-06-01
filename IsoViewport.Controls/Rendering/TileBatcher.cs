@@ -155,20 +155,20 @@ public static class TileBatcher
         float panX,
         float panY,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD,
         bool showTerrainTileBorders = true)
     {
         return BuildTileBatch(map, zoom, viewport, panX, panY, rotationDegrees, projectionMode, showTerrainTileBorders).Vertices;
     }
 
-    public static float[] BuildChunkVertexData(TileMap map, int chunkRow, int chunkCol, float zoom, float rotationDegrees = 0f, ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+    public static float[] BuildChunkVertexData(TileMap map, int chunkRow, int chunkCol, float zoom, float rotationDegrees = 0f, ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
-        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Terrain, projectionMode, false).Vertices;
+        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Voxel, projectionMode, false).Vertices;
     }
 
     public static float[] BuildChunkVertexData(TileMap map, int chunkRow, int chunkCol, float zoom, bool animPass)
     {
-        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, 0f, TerrainRenderMode.Terrain, ViewProjectionMode.Isometric, animPass).Vertices;
+        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, 0f, TerrainRenderMode.Voxel, ViewProjectionMode.ThreeD, animPass).Vertices;
     }
 
     public static float[] BuildChunkVertexData(
@@ -178,9 +178,9 @@ public static class TileBatcher
         float zoom,
         float rotationDegrees,
         bool animPass,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
-        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Terrain, projectionMode, animPass).Vertices;
+        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Voxel, projectionMode, animPass).Vertices;
     }
 
     public static TileChunkBatch BuildChunkBatch(
@@ -189,9 +189,9 @@ public static class TileBatcher
         int chunkCol,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
-        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Terrain, projectionMode, false);
+        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Voxel, projectionMode, false);
     }
 
     public static TileChunkBatch BuildChunkBatch(
@@ -201,9 +201,9 @@ public static class TileBatcher
         float zoom,
         float rotationDegrees,
         bool animPass,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
-        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Terrain, projectionMode, animPass);
+        return BuildChunkBatch(map, chunkRow, chunkCol, zoom, rotationDegrees, TerrainRenderMode.Voxel, projectionMode, animPass);
     }
 
     public static TileChunkBatch BuildChunkBatch(
@@ -336,7 +336,7 @@ public static class TileBatcher
                     };
                     EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
 
-                    if ((TileType)tileType == TileType.Swamp && renderMode == TerrainRenderMode.Terrain)
+                    if ((TileType)tileType == TileType.Swamp && renderMode == TerrainRenderMode.Voxel)
                     {
                         EmitSwampDetails(vertices, topCorners, depth, row, col);
                     }
@@ -458,7 +458,7 @@ public static class TileBatcher
                     summary.CentreRow,
                     summary.CentreCol);
 
-                if (renderMode == TerrainRenderMode.Terrain)
+                if (renderMode == TerrainRenderMode.Voxel)
                 {
                     EmitFilledQuad(vertices, topCorners, depth, colours.top);
                     if ((TileType)summary.DominantTileType == TileType.Swamp)
@@ -556,7 +556,7 @@ public static class TileBatcher
 
         byte representativeElevation;
 
-        if (renderMode == TerrainRenderMode.Terrain || renderMode == TerrainRenderMode.Voxel)
+        if (renderMode == TerrainRenderMode.Voxel)
         {
             if (waterCount > 0 && waterCount >= landCount)
             {
@@ -721,7 +721,7 @@ public static class TileBatcher
         float panX,
         float panY,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD,
         bool showTerrainTileBorders = true)
     {
         if (zoom <= 0f)
@@ -751,7 +751,7 @@ public static class TileBatcher
                 var tileType = map.TileType[row, col];
                 var depth = IsoMath.TileDepth(col, row, elev, mapSize, rotationDegrees);
                 var topCorners = IsoMath.SmoothedTopFaceCorners(map, col, row, zoom, rotationDegrees, projectionMode);
-                var colours = TileColours.GetFaceColours(tileType, elev, TerrainRenderMode.Terrain, row, col);
+                var colours = TileColours.GetFaceColours(tileType, elev, TerrainRenderMode.Voxel, row, col);
                 var borderColour = showTerrainTileBorders
                     ? TileColours.GetTopBorderColour(colours.top, TileMap.IsWaterTile(tileType, elev))
                     : colours.top;
@@ -779,7 +779,7 @@ public static class TileBatcher
         int elev,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         return IsoMath.GetTileBounds(col, row, elev, zoom, rotationDegrees, projectionMode);
     }
@@ -817,7 +817,7 @@ public static class TileBatcher
 
     private static bool IsAnimatedTile(byte tileType, byte elevation, TerrainRenderMode renderMode)
     {
-        return renderMode == TerrainRenderMode.Terrain && TileMap.IsWaterTile(tileType, elevation);
+        return renderMode == TerrainRenderMode.Voxel && TileMap.IsWaterTile(tileType, elevation);
     }
 
     private static Vector3 GetContourBorderColour(

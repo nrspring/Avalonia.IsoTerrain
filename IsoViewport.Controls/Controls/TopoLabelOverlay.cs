@@ -28,10 +28,10 @@ public sealed class TopoLabelOverlay : Control
         AvaloniaProperty.Register<TopoLabelOverlay, float>(nameof(CameraRotationDegrees), 0f);
 
     public static readonly StyledProperty<ViewProjectionMode> ViewProjectionModeProperty =
-        AvaloniaProperty.Register<TopoLabelOverlay, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.Isometric);
+        AvaloniaProperty.Register<TopoLabelOverlay, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.ThreeD);
 
     public static readonly StyledProperty<TerrainRenderMode> RenderModeProperty =
-        AvaloniaProperty.Register<TopoLabelOverlay, TerrainRenderMode>(nameof(RenderMode), TerrainRenderMode.Terrain);
+        AvaloniaProperty.Register<TopoLabelOverlay, TerrainRenderMode>(nameof(RenderMode), TerrainRenderMode.Voxel);
 
     public static readonly StyledProperty<double> ViewportWidthProperty =
         AvaloniaProperty.Register<TopoLabelOverlay, double>(nameof(ViewportWidth), 0d);

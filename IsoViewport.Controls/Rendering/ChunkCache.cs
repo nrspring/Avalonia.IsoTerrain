@@ -85,8 +85,8 @@ public sealed class ChunkCache
         GL gl,
         TileMap map,
         float rotationDegrees = 0f,
-        TerrainRenderMode renderMode = TerrainRenderMode.Terrain,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
+        TerrainRenderMode renderMode = TerrainRenderMode.Voxel,
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD,
         bool showTerrainTileBorders = true,
         int lodBlockSize = 1)
     {
@@ -103,8 +103,8 @@ public sealed class ChunkCache
         GL gl,
         TileMap map,
         float rotationDegrees = 0f,
-        TerrainRenderMode renderMode = TerrainRenderMode.Terrain,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
+        TerrainRenderMode renderMode = TerrainRenderMode.Voxel,
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD,
         bool showTerrainTileBorders = true,
         int lodBlockSize = 1)
     {

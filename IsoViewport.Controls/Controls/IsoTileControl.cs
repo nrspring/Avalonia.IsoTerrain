@@ -44,10 +44,10 @@ public sealed class IsoTileControl : OpenGlControlBase
         AvaloniaProperty.Register<IsoTileControl, float>(nameof(CameraRotationDegrees), 0f);
 
     public static readonly StyledProperty<ViewProjectionMode> ViewProjectionModeProperty =
-        AvaloniaProperty.Register<IsoTileControl, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.Isometric);
+        AvaloniaProperty.Register<IsoTileControl, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.ThreeD);
 
     public static readonly StyledProperty<TerrainRenderMode> RenderModeProperty =
-        AvaloniaProperty.Register<IsoTileControl, TerrainRenderMode>(nameof(RenderMode), TerrainRenderMode.Terrain);
+        AvaloniaProperty.Register<IsoTileControl, TerrainRenderMode>(nameof(RenderMode), TerrainRenderMode.Voxel);
 
     public static readonly StyledProperty<int> VisibleTilesProperty =
         AvaloniaProperty.Register<IsoTileControl, int>(nameof(VisibleTiles));
@@ -1167,7 +1167,7 @@ public sealed class IsoTileControl : OpenGlControlBase
 
     internal static float GetTerrainBorderVisibility(float zoom, TerrainRenderMode renderMode)
     {
-        if (renderMode != TerrainRenderMode.Terrain)
+        if (renderMode != TerrainRenderMode.Voxel)
         {
             return 1f;
         }

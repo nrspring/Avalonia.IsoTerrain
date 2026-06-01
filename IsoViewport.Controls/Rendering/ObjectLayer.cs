@@ -88,8 +88,8 @@ public sealed class ObjectLayer
         GL gl,
         TileMap map,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric,
-        TerrainRenderMode renderMode = TerrainRenderMode.Terrain)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD,
+        TerrainRenderMode renderMode = TerrainRenderMode.Voxel)
     {
         ArgumentNullException.ThrowIfNull(gl);
         ArgumentNullException.ThrowIfNull(map);

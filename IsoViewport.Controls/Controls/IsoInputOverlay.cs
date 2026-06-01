@@ -29,7 +29,7 @@ public sealed class IsoInputOverlay : Border
         AvaloniaProperty.Register<IsoInputOverlay, float>(nameof(CameraRotationDegrees), 0f);
 
     public static readonly StyledProperty<ViewProjectionMode> ViewProjectionModeProperty =
-        AvaloniaProperty.Register<IsoInputOverlay, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.Isometric);
+        AvaloniaProperty.Register<IsoInputOverlay, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.ThreeD);
 
     public static readonly StyledProperty<(int Col, int Row)?> HoveredTileProperty =
         AvaloniaProperty.Register<IsoInputOverlay, (int Col, int Row)?>(nameof(HoveredTile));
@@ -211,8 +211,8 @@ public sealed class IsoInputOverlay : Border
         }
         else if (change.Property == ViewProjectionModeProperty)
         {
-            var oldMode = change.OldValue is ViewProjectionMode oldValue ? oldValue : IsoViewport.Controls.Rendering.ViewProjectionMode.Isometric;
-            var newMode = change.NewValue is ViewProjectionMode newValue ? newValue : IsoViewport.Controls.Rendering.ViewProjectionMode.Isometric;
+            var oldMode = change.OldValue is ViewProjectionMode oldValue ? oldValue : IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
+            var newMode = change.NewValue is ViewProjectionMode newValue ? newValue : IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
 
             if (oldMode == newMode)
             {

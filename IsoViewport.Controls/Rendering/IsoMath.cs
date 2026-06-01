@@ -35,7 +35,7 @@ public static class IsoMath
         int row,
         int elev,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         return TileToScreen((float)col, row, elev, rotationDegrees, projectionMode);
     }
@@ -45,7 +45,7 @@ public static class IsoMath
         float row,
         float elev,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         if (projectionMode == ViewProjectionMode.ThreeD)
         {
@@ -61,7 +61,7 @@ public static class IsoMath
         int row,
         float elev,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         return GridVertexToScreen((float)col, row, elev, rotationDegrees, projectionMode);
     }
@@ -71,7 +71,7 @@ public static class IsoMath
         float row,
         float elev,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         var groundCorner = TileToScreen(col, row, 0f, rotationDegrees, projectionMode) +
                            GetTopFaceCornerOffsets(rotationDegrees, projectionMode).top;
@@ -84,7 +84,7 @@ public static class IsoMath
         Vector2 screenPos,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         if (zoom <= 0f)
         {
@@ -106,7 +106,7 @@ public static class IsoMath
         int elev,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         var projectedElevation = projectionMode == ViewProjectionMode.TopDown ? 0 : elev;
         var centre = TileToScreen(col, row, projectedElevation, rotationDegrees, projectionMode) * zoom;
@@ -153,7 +153,7 @@ public static class IsoMath
         int row,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         ArgumentNullException.ThrowIfNull(map);
 
@@ -181,7 +181,7 @@ public static class IsoMath
         out int col,
         out int row,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         ArgumentNullException.ThrowIfNull(map);
 
@@ -263,7 +263,7 @@ public static class IsoMath
         int elev,
         float zoom,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         var projectedElevation = projectionMode == ViewProjectionMode.TopDown ? 0 : elev;
         var topCorners = TopFaceCorners(col, row, projectedElevation, zoom, rotationDegrees, projectionMode);
@@ -293,7 +293,7 @@ public static class IsoMath
     public static RectangleF GetMapBounds(
         TileMap map,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         ArgumentNullException.ThrowIfNull(map);
 
@@ -326,7 +326,7 @@ public static class IsoMath
         float viewportHeight,
         float padding = 0f,
         float rotationDegrees = 0f,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         ArgumentNullException.ThrowIfNull(map);
 
@@ -356,7 +356,7 @@ public static class IsoMath
         float rotationDegrees,
         float viewportWidth,
         float viewportHeight,
-        ViewProjectionMode projectionMode = ViewProjectionMode.Isometric)
+        ViewProjectionMode projectionMode = ViewProjectionMode.ThreeD)
     {
         if (zoom <= 0f)
         {
@@ -428,16 +428,14 @@ public static class IsoMath
         return projectionMode switch
         {
             ViewProjectionMode.TopDown => new Vector2(col * TopDownTileSize, row * TopDownTileSize),
-            _ => new Vector2(
-                (col - row) * TileHalfW,
-                (col + row) * TileHalfH - elev * ElevStep),
+            _ => ProjectObliqueTileCentre(col, row, elev),
         };
     }
 
     private static Vector2 ProjectConsistent3D(float col, float row, float elev, float rotationDegrees)
     {
         var rotatedGround = RotateGround(new Vector2(col, row), SnapToStableObliqueRotationDegrees(rotationDegrees));
-        return ProjectTileCentre(rotatedGround.X, rotatedGround.Y, elev, ViewProjectionMode.Isometric);
+        return ProjectObliqueTileCentre(rotatedGround.X, rotatedGround.Y, elev);
     }
 
     private static Vector2 UnprojectGround(Vector2 screenPos, float zoom, ViewProjectionMode projectionMode)
@@ -450,16 +448,28 @@ public static class IsoMath
             ViewProjectionMode.TopDown => new Vector2(
                 x / TopDownTileSize,
                 y / TopDownTileSize),
-            _ => new Vector2(
-                (x / TileHalfW + y / TileHalfH) * 0.5f,
-                (y / TileHalfH - x / TileHalfW) * 0.5f),
+            _ => UnprojectObliqueGround(x, y),
         };
     }
 
     private static Vector2 UnprojectConsistent3D(Vector2 screenPos, float rotationDegrees)
     {
-        var rotatedGround = UnprojectGround(screenPos, 1f, ViewProjectionMode.Isometric);
+        var rotatedGround = UnprojectObliqueGround(screenPos.X, screenPos.Y);
         return RotateGround(rotatedGround, -SnapToStableObliqueRotationDegrees(rotationDegrees));
+    }
+
+    private static Vector2 ProjectObliqueTileCentre(float col, float row, float elev)
+    {
+        return new Vector2(
+            (col - row) * TileHalfW,
+            (col + row) * TileHalfH - elev * ElevStep);
+    }
+
+    private static Vector2 UnprojectObliqueGround(float x, float y)
+    {
+        return new Vector2(
+            (x / TileHalfW + y / TileHalfH) * 0.5f,
+            (y / TileHalfH - x / TileHalfW) * 0.5f);
     }
 
     private static Vector2 RotateGround(Vector2 ground, float rotationDegrees)

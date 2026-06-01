@@ -26,7 +26,7 @@ public sealed class MiniMapControl : Control
         AvaloniaProperty.Register<MiniMapControl, float>(nameof(CameraRotationDegrees), 0f);
 
     public static readonly StyledProperty<ViewProjectionMode> ViewProjectionModeProperty =
-        AvaloniaProperty.Register<MiniMapControl, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.Isometric);
+        AvaloniaProperty.Register<MiniMapControl, ViewProjectionMode>(nameof(ViewProjectionMode), ViewProjectionMode.ThreeD);
 
     public static readonly StyledProperty<double> ViewportWidthProperty =
         AvaloniaProperty.Register<MiniMapControl, double>(nameof(ViewportWidth), 0d);
