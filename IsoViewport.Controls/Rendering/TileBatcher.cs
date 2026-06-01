@@ -140,8 +140,8 @@ public static class TileBatcher
     private const float WaterInnerInsetFactor = 0.18f;
     private const float TopInsetDepthBias = 0.0005f;
     private const float AnimatedWaterCullPadding = 8f;
-    private const int TopographicalMinorInterval = 10;
-    private const int TopographicalMajorInterval = 20;
+    private const int TopographicalMinorInterval = 2;
+    private const int TopographicalMajorInterval = 5;
     private const float CardinalShoreWeight = 1f;
     private const float DiagonalShoreWeight = 0.65f;
     private const float MaxShoreWeight = CardinalShoreWeight * 4f + DiagonalShoreWeight * 4f;

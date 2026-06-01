@@ -43,8 +43,8 @@ public sealed class TopoLabelOverlay : Control
     private static readonly IBrush LabelBrush = new SolidColorBrush(Color.FromRgb(66, 66, 66));
     private static readonly IBrush LabelHaloBrush = new SolidColorBrush(Color.FromArgb(220, 250, 250, 247));
     private static readonly string[] ElevationLabels = BuildElevationLabels();
-    private const int LabelInterval = 10;
-    private const int MajorLabelInterval = 20;
+    private const int LabelInterval = 2;
+    private const int MajorLabelInterval = 5;
     private const int MinimumLabelSpacingPixels = 64;
     private readonly Dictionary<string, FormattedText> _labelTextCache = [];
     private readonly Dictionary<string, FormattedText> _haloTextCache = [];

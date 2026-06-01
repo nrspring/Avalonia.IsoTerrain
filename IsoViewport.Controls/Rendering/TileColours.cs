@@ -17,10 +17,16 @@ public enum TileType : byte
 
 public static class TileColours
 {
-    private const float MaxVisualElevation = TileMap.MaxElevation;
+    private const float DetailedVisualMaxElevation = TileMap.LandMinElevation + 20f;
     private const float LandElevationShadePerStep = 0.1f;
     private static readonly Vector3 DeepWaterColour = new(0.08f, 0.24f, 0.45f);
     private static readonly Vector3 ShallowWaterColour = new(0.30f, 0.64f, 0.84f);
+    private static readonly Vector3 HeatDeepWaterColour = new(0.04f, 0.13f, 0.42f);
+    private static readonly Vector3 HeatShallowWaterColour = new(0.06f, 0.48f, 0.78f);
+    private static readonly Vector3 HeatLowlandColour = new(0.08f, 0.60f, 0.22f);
+    private static readonly Vector3 HeatHillColour = new(0.86f, 0.78f, 0.18f);
+    private static readonly Vector3 HeatHighlandColour = new(0.88f, 0.32f, 0.12f);
+    private static readonly Vector3 HeatPeakColour = new(0.96f, 0.96f, 0.90f);
 
     public static Vector3 GetTopBorderColour(Vector3 top, bool isWater = false)
     {
@@ -94,19 +100,50 @@ public static class TileColours
 
     private static (Vector3 top, Vector3 left, Vector3 right) GetHeatColours(byte elev)
     {
-        var heat = Math.Clamp(elev / MaxVisualElevation, 0f, 1f);
-        var top = new Vector3(heat, heat, heat);
+        var heat = NormalizeDetailedElevation(elev);
+        var top = elev switch
+        {
+            <= TileMap.DeepWaterElevation => HeatDeepWaterColour,
+            <= TileMap.ShallowWaterElevation => HeatShallowWaterColour,
+            _ => GetHeatRampColour(heat),
+        };
+
         return (top, top * 0.62f, top * 0.78f);
     }
 
     private static (Vector3 top, Vector3 left, Vector3 right) GetTopographicalColours(byte elev, int row, int col)
     {
-        var normalized = Math.Clamp(elev / MaxVisualElevation, 0f, 1f);
-        var paperTint = 0.965f - normalized * 0.025f;
-        var top = new Vector3(paperTint, paperTint, paperTint);
-        var left = new Vector3(0.90f, 0.90f, 0.90f);
-        var right = new Vector3(0.94f, 0.94f, 0.94f);
+        var normalized = NormalizeDetailedElevation(elev);
+        var paperTint = 0.975f - normalized * 0.085f;
+        var top = new Vector3(paperTint, paperTint, paperTint * (1f - normalized * 0.02f));
+        var left = top * 0.93f;
+        var right = top * 0.97f;
         return (top, left, right);
+    }
+
+    private static float NormalizeDetailedElevation(byte elev)
+    {
+        return Math.Clamp(elev / DetailedVisualMaxElevation, 0f, 1f);
+    }
+
+    private static Vector3 GetHeatRampColour(float heat)
+    {
+        if (heat < 0.35f)
+        {
+            return Lerp(HeatLowlandColour, HeatHillColour, heat / 0.35f);
+        }
+
+        if (heat < 0.70f)
+        {
+            return Lerp(HeatHillColour, HeatHighlandColour, (heat - 0.35f) / 0.35f);
+        }
+
+        return Lerp(HeatHighlandColour, HeatPeakColour, (heat - 0.70f) / 0.30f);
+    }
+
+    private static Vector3 Lerp(Vector3 from, Vector3 to, float amount)
+    {
+        return from + ((to - from) * Math.Clamp(amount, 0f, 1f));
     }
 
     private static float Hash01(int row, int col, int seedA, int seedB)
