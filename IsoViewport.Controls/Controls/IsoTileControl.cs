@@ -17,7 +17,7 @@ namespace IsoViewport.Controls.Controls;
 
 public sealed class IsoTileControl : OpenGlControlBase
 {
-    private const float KeyboardRotationStepDegrees = 15f;
+    private const float KeyboardRotationStepDegrees = 45f;
 
     private enum VboDirtyReason
     {

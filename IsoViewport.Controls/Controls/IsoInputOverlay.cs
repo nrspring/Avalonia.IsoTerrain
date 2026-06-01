@@ -11,7 +11,7 @@ namespace IsoViewport.Controls.Controls;
 
 public sealed class IsoInputOverlay : Border
 {
-    private const float KeyboardRotationStepDegrees = 15f;
+    private const float KeyboardRotationStepDegrees = 45f;
 
     public static readonly StyledProperty<TileMap?> TileMapProperty =
         AvaloniaProperty.Register<IsoInputOverlay, TileMap?>(nameof(TileMap));
