@@ -336,7 +336,8 @@ public static class TileBatcher
                     };
                     EmitTopFace(vertices, topCorners, depth, colours.top, borderColour);
 
-                    if ((TileType)tileType == TileType.Swamp && renderMode == TerrainRenderMode.Voxel)
+                    if ((TileType)tileType == TileType.Swamp &&
+                        renderMode is TerrainRenderMode.Voxel or TerrainRenderMode.ShadedRelief)
                     {
                         EmitSwampDetails(vertices, topCorners, depth, row, col);
                     }

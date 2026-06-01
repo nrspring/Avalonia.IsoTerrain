@@ -74,6 +74,7 @@ public static class TileColours
         {
             TerrainRenderMode.Heat => GetHeatColours(elev),
             TerrainRenderMode.Topographical => GetTopographicalColours(elev, row, col),
+            TerrainRenderMode.ShadedRelief => GetTerrainColours(tileType, elev, row, col),
             TerrainRenderMode.Voxel => GetTerrainColours(tileType, elev, row, col),
             _ => GetTerrainColours(tileType, elev, row, col),
         };
