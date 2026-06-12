@@ -171,7 +171,7 @@ public sealed class TopoLabelOverlay : Control
                 }
 
                 var screen = IsoMath.TileToScreen(col, row, map.Elevation[row, col], CameraRotationDegrees, ViewProjectionMode) * CameraZoom;
-                var labelYOffset = ViewProjectionMode == IsoViewport.Controls.Rendering.ViewProjectionMode.TopDown
+                var labelYOffset = ViewProjectionMode == global::IsoViewport.Controls.Rendering.ViewProjectionMode.TopDown
                     ? 0f
                     : IsoMath.TileHalfH * CameraZoom * 0.4f;
                 screen += new Vector2(CameraPanX, CameraPanY - labelYOffset);

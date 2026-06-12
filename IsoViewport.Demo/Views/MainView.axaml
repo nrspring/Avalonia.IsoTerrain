@@ -16,7 +16,7 @@
           <ToggleSwitch
               IsChecked="{Binding IsTopDownView, Mode=TwoWay}"
               OnContent="Top-Down"
-              OffContent="Isometric"
+              OffContent="3D"
               VerticalAlignment="Center" />
           <Button Command="{Binding RotateLeftCommand}" Content="Rotate Left" />
           <Button Command="{Binding RotateRightCommand}" Content="Rotate Right" />

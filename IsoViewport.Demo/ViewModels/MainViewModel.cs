@@ -33,7 +33,7 @@ public sealed partial class MainViewModel : ObservableObject
     private float _cameraRotationDegrees = 0f;
 
     [ObservableProperty]
-    private ViewProjectionMode _viewProjectionMode = ViewProjectionMode.Isometric;
+    private ViewProjectionMode _viewProjectionMode = ViewProjectionMode.ThreeD;
 
     [ObservableProperty]
     private int _visibleTiles;
@@ -60,7 +60,7 @@ public sealed partial class MainViewModel : ObservableObject
     private MiniMapLocation _miniMapLocation = MiniMapLocation.BottomRight;
 
     [ObservableProperty]
-    private TerrainRenderMode _renderMode = TerrainRenderMode.Terrain;
+    private TerrainRenderMode _renderMode = TerrainRenderMode.Voxel;
 
     public IReadOnlyList<TerrainRenderMode> RenderModes { get; } = Enum.GetValues<TerrainRenderMode>();
 
@@ -76,7 +76,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var next = value
                 ? IsoViewport.Controls.Rendering.ViewProjectionMode.TopDown
-                : IsoViewport.Controls.Rendering.ViewProjectionMode.Isometric;
+                : IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
 
             if (ViewProjectionMode != next)
             {

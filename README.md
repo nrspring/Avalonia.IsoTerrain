@@ -14,7 +14,7 @@ It currently includes:
 - animated deep/shallow water rendering
 - minimap, tile picking, camera pan / zoom / rotation, and hover support
 - large-map performance work including far-zoom LOD rendering
-- an Avalonia demo app and xUnit coverage for core math, batching, overlays, and view-model behavior
+- an Avalonia demo app, a focused viewer harness app, and xUnit coverage for core math, batching, overlays, and view-model behavior
 
 ## Screenshots
 
@@ -42,6 +42,9 @@ It currently includes:
 - `IsoViewport.Demo`
   Desktop demo app for exercising the viewer, presets, render modes, and debug stats.
 
+- `IsoViewport.Harness`
+  Focused manual test harness for validating viewer behavior before and during the multi-project piece/highlight work.
+
 - `IsoViewport.Tests`
   xUnit coverage for renderer math, chunking, batching, colors, overlays, and demo view-model logic.
 
@@ -57,6 +60,12 @@ It currently includes:
 dotnet restore IsoViewport.sln --configfile NuGet.Config
 dotnet build IsoViewport.sln --no-restore
 dotnet run --project IsoViewport.Demo\IsoViewport.Demo.csproj --no-build
+```
+
+Run the focused viewer harness:
+
+```powershell
+dotnet run --project IsoViewport.Harness\IsoViewport.Harness.csproj
 ```
 
 Run tests:

@@ -12,6 +12,7 @@ namespace IsoViewport.Controls.Controls;
 public sealed class IsoInputOverlay : Border
 {
     private const float KeyboardRotationStepDegrees = 45f;
+    private const double ClickTravelThreshold = 4d;
 
     public static readonly StyledProperty<TileMap?> TileMapProperty =
         AvaloniaProperty.Register<IsoInputOverlay, TileMap?>(nameof(TileMap));
@@ -50,6 +51,11 @@ public sealed class IsoInputOverlay : Border
     private bool _panning;
     private MouseButton? _panningButton;
     private double _panTravel;
+    private double _pressTravel;
+    private (int Col, int Row)? _pressTile;
+    private MouseButton? _pressButton;
+    private KeyModifiers _pressModifiers;
+    private KeyModifiers _lastHoverModifiers;
     private bool _hasPointer;
     private Vector2 _inertiaDelta;
     private bool _fitOnNextLayout;
@@ -90,6 +96,8 @@ public sealed class IsoInputOverlay : Border
             _panning = false;
             _panningButton = null;
             _panTravel = 0d;
+            ClearPressState();
+            SetHoveredTile(null, KeyModifiers.None);
         };
 
         _keyTimer = new DispatcherTimer
@@ -168,6 +176,8 @@ public sealed class IsoInputOverlay : Border
 
     public event EventHandler<TileClickedEventArgs>? TileClicked;
 
+    internal event EventHandler<TileHoverChangedEventArgs>? TileHovered;
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -177,7 +187,7 @@ public sealed class IsoInputOverlay : Border
             _autoFitCamera = true;
             _lastFittedViewportWidth = double.NaN;
             _lastFittedViewportHeight = double.NaN;
-            SetCurrentValue(HoveredTileProperty, null);
+            SetHoveredTile(null, KeyModifiers.None);
             TryFitViewToMap();
         }
         else if (change.Property == CameraRotationDegreesProperty)
@@ -211,8 +221,8 @@ public sealed class IsoInputOverlay : Border
         }
         else if (change.Property == ViewProjectionModeProperty)
         {
-            var oldMode = change.OldValue is ViewProjectionMode oldValue ? oldValue : IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
-            var newMode = change.NewValue is ViewProjectionMode newValue ? newValue : IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
+            var oldMode = change.OldValue is ViewProjectionMode oldValue ? oldValue : global::IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
+            var newMode = change.NewValue is ViewProjectionMode newValue ? newValue : global::IsoViewport.Controls.Rendering.ViewProjectionMode.ThreeD;
 
             if (oldMode == newMode)
             {
@@ -259,9 +269,14 @@ public sealed class IsoInputOverlay : Border
         var position = e.GetPosition(this);
         _lastMousePos = position;
         _hasPointer = true;
-        UpdateHoveredTile(position);
+        var currentTile = UpdateHoveredTile(position, e.KeyModifiers);
 
         var point = e.GetCurrentPoint(this);
+        var button = GetPressedButton(point);
+        _pressTile = currentTile;
+        _pressButton = button;
+        _pressModifiers = e.KeyModifiers;
+        _pressTravel = 0d;
 
         if (point.Properties.IsRightButtonPressed || point.Properties.IsMiddleButtonPressed)
         {
@@ -269,7 +284,7 @@ public sealed class IsoInputOverlay : Border
             _panningButton = point.Properties.IsMiddleButtonPressed ? MouseButton.Middle : MouseButton.Right;
             _panTravel = 0d;
             _inertiaDelta = Vector2.Zero;
-            SetCurrentValue(HoveredTileProperty, null);
+            SetHoveredTile(null, e.KeyModifiers);
             e.Pointer.Capture(this);
             e.Handled = true;
             return;
@@ -277,7 +292,6 @@ public sealed class IsoInputOverlay : Border
 
         if (point.Properties.IsLeftButtonPressed)
         {
-            RaiseTileClicked(position, MouseButton.Left);
             e.Handled = true;
         }
     }
@@ -287,23 +301,50 @@ public sealed class IsoInputOverlay : Border
         base.OnPointerReleased(e);
 
         _lastMousePos = e.GetPosition(this);
+        var releaseTile = TryGetTile(_lastMousePos);
 
         if (_panning)
         {
-            var shouldClick = _panningButton == MouseButton.Right && _panTravel < 4d;
+            var panningButton = _panningButton;
+            var shouldClick = panningButton.HasValue &&
+                _pressButton == panningButton.Value &&
+                _panTravel < ClickTravelThreshold &&
+                _pressTile.HasValue &&
+                _pressTile == releaseTile;
             _panning = false;
             _panningButton = null;
             e.Pointer.Capture(null);
 
             if (shouldClick)
             {
-                RaiseTileClicked(_lastMousePos, MouseButton.Right);
+                RaiseTileClicked(releaseTile!.Value, panningButton!.Value, e.KeyModifiers);
             }
             else
             {
-                UpdateHoveredTile(_lastMousePos);
+                UpdateHoveredTile(_lastMousePos, e.KeyModifiers);
             }
 
+            ClearPressState();
+            e.Handled = true;
+            return;
+        }
+
+        if (_pressButton == MouseButton.Left)
+        {
+            var shouldClick = _pressTravel < ClickTravelThreshold &&
+                _pressTile.HasValue &&
+                _pressTile == releaseTile;
+
+            if (shouldClick)
+            {
+                RaiseTileClicked(releaseTile!.Value, MouseButton.Left, e.KeyModifiers);
+            }
+            else
+            {
+                UpdateHoveredTile(_lastMousePos, e.KeyModifiers);
+            }
+
+            ClearPressState();
             e.Handled = true;
         }
     }
@@ -321,13 +362,19 @@ public sealed class IsoInputOverlay : Border
             _panTravel += Math.Abs(delta.X) + Math.Abs(delta.Y);
             ApplyPanDelta((float)delta.X, (float)delta.Y);
             _inertiaDelta = new Vector2((float)delta.X, (float)delta.Y);
-            SetCurrentValue(HoveredTileProperty, null);
+            SetHoveredTile(null, e.KeyModifiers);
             _lastMousePos = position;
             return;
         }
 
+        if (_pressButton == MouseButton.Left)
+        {
+            var delta = position - _lastMousePos;
+            _pressTravel += Math.Abs(delta.X) + Math.Abs(delta.Y);
+        }
+
         _lastMousePos = position;
-        UpdateHoveredTile(position);
+        UpdateHoveredTile(position, e.KeyModifiers);
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
@@ -338,6 +385,7 @@ public sealed class IsoInputOverlay : Border
         _lastMousePos = position;
         _hasPointer = true;
         ApplyZoomAtPoint(IsoCamera.GetWheelZoomFactor((float)e.Delta.Y), ToVector2(position));
+        UpdateHoveredTile(position, e.KeyModifiers);
         e.Handled = true;
     }
 
@@ -345,7 +393,7 @@ public sealed class IsoInputOverlay : Border
     {
         base.OnPointerExited(e);
         _hasPointer = false;
-        SetCurrentValue(HoveredTileProperty, null);
+        SetHoveredTile(null, e.KeyModifiers);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -385,6 +433,8 @@ public sealed class IsoInputOverlay : Border
             _heldKeys.Add(e.Key);
             e.Handled = true;
         }
+
+        UpdateHoverModifiers(e.KeyModifiers);
     }
 
     protected override void OnKeyUp(KeyEventArgs e)
@@ -395,6 +445,8 @@ public sealed class IsoInputOverlay : Border
         {
             e.Handled = true;
         }
+
+        UpdateHoverModifiers(e.KeyModifiers);
     }
 
     private void OnKeyTimerTick(object? sender, EventArgs e)
@@ -537,15 +589,10 @@ public sealed class IsoInputOverlay : Border
         UpdateHoveredTileFromLastPointer();
     }
 
-    private void RaiseTileClicked(Point position, MouseButton button)
+    private void RaiseTileClicked((int Col, int Row) tile, MouseButton button, KeyModifiers keyModifiers)
     {
-        if (!TryPickTile(position, out var col, out var row))
-        {
-            return;
-        }
-
-        SetCurrentValue(HoveredTileProperty, (col, row));
-        var args = new TileClickedEventArgs(col, row, button);
+        SetHoveredTile(tile, keyModifiers);
+        var args = new TileClickedEventArgs(tile.Col, tile.Row, button, keyModifiers);
         TileClicked?.Invoke(this, args);
 
         if (TileClickedCommand is { } command && command.CanExecute(args))
@@ -554,23 +601,82 @@ public sealed class IsoInputOverlay : Border
         }
     }
 
-    private void UpdateHoveredTile(Point position)
+    private (int Col, int Row)? UpdateHoveredTile(Point position, KeyModifiers keyModifiers)
     {
         if (TryPickTile(position, out var col, out var row))
         {
-            SetCurrentValue(HoveredTileProperty, (col, row));
-            return;
+            var tile = (col, row);
+            SetHoveredTile(tile, keyModifiers);
+            return tile;
         }
 
-        SetCurrentValue(HoveredTileProperty, null);
+        SetHoveredTile(null, keyModifiers);
+        return null;
     }
 
     private void UpdateHoveredTileFromLastPointer()
     {
         if (_hasPointer)
         {
-            UpdateHoveredTile(_lastMousePos);
+            UpdateHoveredTile(_lastMousePos, _lastHoverModifiers);
         }
+    }
+
+    private void SetHoveredTile((int Col, int Row)? tile, KeyModifiers keyModifiers)
+    {
+        if (HoveredTile == tile && _lastHoverModifiers == keyModifiers)
+        {
+            return;
+        }
+
+        _lastHoverModifiers = keyModifiers;
+        SetCurrentValue(HoveredTileProperty, tile);
+        TileHovered?.Invoke(this, new TileHoverChangedEventArgs(tile, keyModifiers));
+    }
+
+    private void UpdateHoverModifiers(KeyModifiers keyModifiers)
+    {
+        if (HoveredTile is null || _lastHoverModifiers == keyModifiers)
+        {
+            return;
+        }
+
+        SetHoveredTile(HoveredTile, keyModifiers);
+    }
+
+    private (int Col, int Row)? TryGetTile(Point position)
+    {
+        return TryPickTile(position, out var col, out var row)
+            ? (col, row)
+            : null;
+    }
+
+    private void ClearPressState()
+    {
+        _pressTile = null;
+        _pressButton = null;
+        _pressModifiers = KeyModifiers.None;
+        _pressTravel = 0d;
+    }
+
+    private static MouseButton? GetPressedButton(PointerPoint point)
+    {
+        if (point.Properties.IsLeftButtonPressed)
+        {
+            return MouseButton.Left;
+        }
+
+        if (point.Properties.IsRightButtonPressed)
+        {
+            return MouseButton.Right;
+        }
+
+        if (point.Properties.IsMiddleButtonPressed)
+        {
+            return MouseButton.Middle;
+        }
+
+        return null;
     }
 
     private bool TryPickTile(Point position, out int col, out int row)

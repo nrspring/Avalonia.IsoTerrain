@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using Avalonia.Threading;
+using IsoViewport.Controls.Contracts;
 using IsoViewport.Controls.Rendering;
 using Silk.NET.OpenGL;
 using RectangleF = System.Drawing.RectangleF;
@@ -76,6 +77,9 @@ public sealed class IsoTileControl : OpenGlControlBase
     public static readonly StyledProperty<ObjectLayer?> ObjectLayerProperty =
         AvaloniaProperty.Register<IsoTileControl, ObjectLayer?>(nameof(ObjectLayer));
 
+    public static readonly StyledProperty<IReadOnlyCollection<ITileHighlight>?> TileHighlightsProperty =
+        AvaloniaProperty.Register<IsoTileControl, IReadOnlyCollection<ITileHighlight>?>(nameof(TileHighlights));
+
     public static readonly StyledProperty<double> ViewportWidthProperty =
         AvaloniaProperty.Register<IsoTileControl, double>(nameof(ViewportWidth), 0d);
 
@@ -93,9 +97,10 @@ public sealed class IsoTileControl : OpenGlControlBase
     private const float WaterAnimationMinStrength = 0.42f;
     private const float WaterGridFadeStartZoom = 0.32f;
     private const float WaterGridFadeEndZoom = 0.60f;
-    private const float HoverOuterInset = 0.06f;
-    private const float HoverInnerInset = 0.18f;
-    private const float HoverDepthBias = 0.0015f;
+    private const float HighlightOuterInset = 0.06f;
+    private const float HighlightInnerInset = 0.18f;
+    private const float HighlightDepthBias = 0.0015f;
+    private const int HighlightFloatsPerTile = 5 * 6 * 6;
 
     private GL _gl = null!;
     private uint _vao;
@@ -116,7 +121,9 @@ public sealed class IsoTileControl : OpenGlControlBase
     private ChunkCache? _farLodCache;
     private TileMap? _observedTileMap;
     private ObjectLayer? _observedObjectLayer;
+    private float[] _highlightVertices = [];
     private VboDirtyReason _dirtyReason = VboDirtyReason.None;
+    private bool _highlightVerticesDirty = true;
     private readonly Stopwatch _fpsClock = Stopwatch.StartNew();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private int _framesSinceFpsUpdate;
@@ -259,6 +266,12 @@ public sealed class IsoTileControl : OpenGlControlBase
         set => SetValue(ObjectLayerProperty, value);
     }
 
+    public IReadOnlyCollection<ITileHighlight>? TileHighlights
+    {
+        get => GetValue(TileHighlightsProperty);
+        set => SetValue(TileHighlightsProperty, value);
+    }
+
     public double ViewportWidth
     {
         get => GetValue(ViewportWidthProperty);
@@ -281,6 +294,7 @@ public sealed class IsoTileControl : OpenGlControlBase
         {
             ObserveTileMap(TileMap);
             SetCurrentValue(HoveredTileProperty, null);
+            _highlightVerticesDirty = true;
             SetDirty(VboDirtyReason.MapReplaced);
         }
         else if (change.Property == ObjectLayerProperty)
@@ -310,15 +324,23 @@ public sealed class IsoTileControl : OpenGlControlBase
                 }
             }
 
+            _highlightVerticesDirty = true;
             SetDirty(VboDirtyReason.ZoomChanged);
         }
         else if (change.Property == ViewProjectionModeProperty)
         {
+            _highlightVerticesDirty = true;
             SetDirty(VboDirtyReason.ZoomChanged);
         }
         else if (change.Property == RenderModeProperty)
         {
+            _highlightVerticesDirty = true;
             SetDirty(VboDirtyReason.ZoomChanged);
+        }
+        else if (change.Property == TileHighlightsProperty)
+        {
+            _highlightVerticesDirty = true;
+            RequestNextFrameRendering();
         }
         else if (change.Property == CameraPanXProperty || change.Property == CameraPanYProperty)
         {
@@ -567,7 +589,7 @@ public sealed class IsoTileControl : OpenGlControlBase
         _gl.Uniform1(_locAnimGridVisibility, GetWaterGridVisibility(zoom));
         activeCache?.DrawVisibleAnimatedChunks(_gl, _vao, SetAttribPointers);
 
-        DrawHoveredTileHighlight(logicalWidth, logicalHeight);
+        DrawTileHighlights(logicalWidth, logicalHeight);
 
         if (ObjectLayer is { } objectLayer)
         {
@@ -730,35 +752,30 @@ public sealed class IsoTileControl : OpenGlControlBase
             : _detailCache;
     }
 
-    private unsafe void DrawHoveredTileHighlight(float logicalWidth, float logicalHeight)
+    private unsafe void DrawTileHighlights(float logicalWidth, float logicalHeight)
     {
-        if (TileMap is not { } map || HoveredTile is not { } hovered)
+        if (TileMap is not { })
         {
             return;
         }
 
-        if ((uint)hovered.Row >= (uint)map.Rows || (uint)hovered.Col >= (uint)map.Cols)
+        if (_highlightVerticesDirty)
+        {
+            _highlightVertices = BuildTileHighlightVertices(
+                TileMap,
+                TileHighlights,
+                RenderMode,
+                CameraRotationDegrees,
+                ViewProjectionMode);
+            _highlightVerticesDirty = false;
+        }
+
+        if (_highlightVertices.Length == 0)
         {
             return;
         }
 
-        var elev = map.Elevation[hovered.Row, hovered.Col];
-        var depth = Math.Clamp(
-            IsoMath.TileDepth(hovered.Col, hovered.Row, elev, Math.Max(map.Rows, map.Cols), CameraRotationDegrees) - HoverDepthBias,
-            0f,
-            1f);
-        var topCorners = RenderMode == TerrainRenderMode.Voxel
-            ? IsoMath.TopFaceCorners(hovered.Col, hovered.Row, elev, 1f, CameraRotationDegrees, ViewProjectionMode)
-            : IsoMath.SmoothedTopFaceCorners(map, hovered.Col, hovered.Row, 1f, CameraRotationDegrees, ViewProjectionMode);
-        var centre = (topCorners[0] + topCorners[1] + topCorners[2] + topCorners[3]) * 0.25f;
-        var baseColour = TileColours.GetFaceColours(map.TileType[hovered.Row, hovered.Col], elev).top;
-        var ringColour = Vector3.Min(new Vector3(1f, 1f, 1f), baseColour * 1.55f + new Vector3(0.12f, 0.10f, 0.02f));
-        var fillColour = Vector3.Min(new Vector3(1f, 1f, 1f), baseColour * 1.18f + new Vector3(0.05f, 0.05f, 0.02f));
-        var outer = InsetCorners(topCorners, centre, HoverOuterInset);
-        var inner = InsetCorners(topCorners, centre, HoverInnerInset);
-        var data = BuildHoverHighlightVertices(outer, inner, depth, ringColour, fillColour);
-
-        fixed (float* dataPtr = data)
+        fixed (float* dataPtr = _highlightVertices)
         {
             _gl.UseProgram(_program);
             _gl.Uniform2(_locViewport, new Vector2(logicalWidth, logicalHeight));
@@ -769,12 +786,55 @@ public sealed class IsoTileControl : OpenGlControlBase
             _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _hoverVbo);
             _gl.BufferData(
                 BufferTargetARB.ArrayBuffer,
-                (nuint)(data.Length * sizeof(float)),
+                (nuint)(_highlightVertices.Length * sizeof(float)),
                 dataPtr,
                 BufferUsageARB.DynamicDraw);
             SetAttribPointers();
-            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(data.Length / 6));
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(_highlightVertices.Length / 6));
         }
+    }
+
+    internal static float[] BuildTileHighlightVertices(
+        TileMap? map,
+        IReadOnlyCollection<ITileHighlight>? highlights,
+        TerrainRenderMode renderMode,
+        float cameraRotationDegrees,
+        ViewProjectionMode projectionMode)
+    {
+        if (map is null || highlights is null || highlights.Count == 0)
+        {
+            return [];
+        }
+
+        var vertices = new List<float>(highlights.Count * HighlightFloatsPerTile);
+
+        foreach (var highlight in highlights)
+        {
+            var row = highlight.Tile.Row;
+            var col = highlight.Tile.Column;
+
+            if ((uint)row >= (uint)map.Rows || (uint)col >= (uint)map.Cols)
+            {
+                continue;
+            }
+
+            var elev = map.Elevation[row, col];
+            var depth = Math.Clamp(
+                IsoMath.TileDepth(col, row, elev, Math.Max(map.Rows, map.Cols), cameraRotationDegrees) - HighlightDepthBias,
+                0f,
+                1f);
+            var topCorners = renderMode == TerrainRenderMode.Voxel
+                ? IsoMath.TopFaceCorners(col, row, elev, 1f, cameraRotationDegrees, projectionMode)
+                : IsoMath.SmoothedTopFaceCorners(map, col, row, 1f, cameraRotationDegrees, projectionMode);
+            var centre = (topCorners[0] + topCorners[1] + topCorners[2] + topCorners[3]) * 0.25f;
+            var baseColour = TileColours.GetFaceColours(map.TileType[row, col], elev, renderMode, row, col).top;
+            var (ringColour, fillColour) = GetTileHighlightColours(highlight.Color, baseColour);
+            var outer = InsetCorners(topCorners, centre, HighlightOuterInset);
+            var inner = InsetCorners(topCorners, centre, HighlightInnerInset);
+            BuildTileHighlightVertices(vertices, outer, inner, depth, ringColour, fillColour);
+        }
+
+        return vertices.ToArray();
     }
 
     private void UpdateFps()
@@ -1092,20 +1152,32 @@ public sealed class IsoTileControl : OpenGlControlBase
         ];
     }
 
-    private static float[] BuildHoverHighlightVertices(
+    private static void BuildTileHighlightVertices(
+        List<float> vertices,
         Vector2[] outer,
         Vector2[] inner,
         float depth,
         Vector3 ringColour,
         Vector3 fillColour)
     {
-        var vertices = new List<float>(8 * 6 * 6);
         EmitQuad(vertices, outer[0], outer[1], inner[1], inner[0], depth, ringColour);
         EmitQuad(vertices, outer[1], outer[2], inner[2], inner[1], depth, ringColour);
         EmitQuad(vertices, outer[2], outer[3], inner[3], inner[2], depth, ringColour);
         EmitQuad(vertices, outer[3], outer[0], inner[0], inner[3], depth, ringColour);
         EmitQuad(vertices, inner[0], inner[1], inner[2], inner[3], depth, fillColour);
-        return vertices.ToArray();
+    }
+
+    internal static (Vector3 RingColour, Vector3 FillColour) GetTileHighlightColours(
+        Avalonia.Media.Color highlightColor,
+        Vector3 baseColour)
+    {
+        var highlight = new Vector3(
+            highlightColor.R / 255f,
+            highlightColor.G / 255f,
+            highlightColor.B / 255f);
+        var ring = Vector3.Clamp(Vector3.Lerp(baseColour, highlight, 0.82f) + new Vector3(0.08f), Vector3.Zero, Vector3.One);
+        var fill = Vector3.Clamp(Vector3.Lerp(baseColour, highlight, 0.42f) + new Vector3(0.03f), Vector3.Zero, Vector3.One);
+        return (ring, fill);
     }
 
     private static void EmitQuad(

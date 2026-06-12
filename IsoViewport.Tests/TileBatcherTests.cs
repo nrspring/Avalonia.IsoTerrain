@@ -186,7 +186,7 @@ public sealed class TileBatcherTests
             1f,
             0f,
             TerrainRenderMode.Heat,
-            ViewProjectionMode.Isometric,
+            ViewProjectionMode.ThreeD,
             false);
 
         var borderOffset = 3;
@@ -209,7 +209,7 @@ public sealed class TileBatcherTests
             1f,
             0f,
             TerrainRenderMode.Heat,
-            ViewProjectionMode.Isometric,
+            ViewProjectionMode.ThreeD,
             false);
 
         var borderOffset = 3;
@@ -230,8 +230,8 @@ public sealed class TileBatcherTests
             0,
             1f,
             0f,
-            TerrainRenderMode.Terrain,
-            ViewProjectionMode.Isometric,
+            TerrainRenderMode.ShadedRelief,
+            ViewProjectionMode.ThreeD,
             false,
             false);
 
@@ -253,8 +253,8 @@ public sealed class TileBatcherTests
             0,
             1f,
             0f,
-            TerrainRenderMode.Terrain,
-            ViewProjectionMode.Isometric,
+            TerrainRenderMode.ShadedRelief,
+            ViewProjectionMode.ThreeD,
             false);
 
         var borderOffset = 3;
@@ -278,7 +278,7 @@ public sealed class TileBatcherTests
             1f,
             0f,
             TerrainRenderMode.Voxel,
-            ViewProjectionMode.Isometric,
+            ViewProjectionMode.ThreeD,
             false);
         var voxelCorners = IsoMath.TopFaceCorners(0, 0, 8, 1f);
         var smoothedCorners = IsoMath.SmoothedTopFaceCorners(map, 0, 0, 1f);
@@ -289,7 +289,7 @@ public sealed class TileBatcherTests
     }
 
     [Theory]
-    [InlineData(TerrainRenderMode.Terrain)]
+    [InlineData(TerrainRenderMode.ShadedRelief)]
     [InlineData(TerrainRenderMode.Heat)]
     [InlineData(TerrainRenderMode.Topographical)]
     [InlineData(TerrainRenderMode.Voxel)]
@@ -322,8 +322,8 @@ public sealed class TileBatcherTests
             0,
             1f,
             0f,
-            TerrainRenderMode.Terrain,
-            ViewProjectionMode.Isometric,
+            TerrainRenderMode.ShadedRelief,
+            ViewProjectionMode.ThreeD,
             false);
         var lodBatch = TileBatcher.BuildChunkBatch(
             map,
@@ -331,8 +331,8 @@ public sealed class TileBatcherTests
             0,
             1f,
             0f,
-            TerrainRenderMode.Terrain,
-            ViewProjectionMode.Isometric,
+            TerrainRenderMode.ShadedRelief,
+            ViewProjectionMode.ThreeD,
             false,
             lodBlockSize: TileBatcher.FarZoomLodBlockSize);
 

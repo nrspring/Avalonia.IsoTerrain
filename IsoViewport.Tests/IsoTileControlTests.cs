@@ -1,4 +1,7 @@
+using System.Numerics;
+using Avalonia.Media;
 using IsoViewport.Controls.Controls;
+using IsoViewport.Controls.Contracts;
 using IsoViewport.Controls.Rendering;
 using Xunit;
 
@@ -7,12 +10,12 @@ namespace IsoViewport.Tests;
 public sealed class IsoTileControlTests
 {
     [Theory]
-    [InlineData(TerrainRenderMode.Terrain, 0.20f, 0f)]
-    [InlineData(TerrainRenderMode.Terrain, 0.30f, 0.50f)]
-    [InlineData(TerrainRenderMode.Terrain, 0.40f, 1f)]
+    [InlineData(TerrainRenderMode.Voxel, 0.20f, 0f)]
+    [InlineData(TerrainRenderMode.Voxel, 0.30f, 0.50f)]
+    [InlineData(TerrainRenderMode.Voxel, 0.40f, 1f)]
     [InlineData(TerrainRenderMode.Heat, 0.20f, 1f)]
     [InlineData(TerrainRenderMode.Topographical, 0.20f, 1f)]
-    [InlineData(TerrainRenderMode.Voxel, 0.20f, 1f)]
+    [InlineData(TerrainRenderMode.ShadedRelief, 0.20f, 1f)]
     public void TerrainBorderVisibilityFadesWithoutRequiringMeshSwap(
         TerrainRenderMode renderMode,
         float zoom,
@@ -52,5 +55,57 @@ public sealed class IsoTileControlTests
         Assert.Equal(TileBatcher.FarZoomLodBlockSize, IsoTileControl.GetFarZoomLodBlockSize(0.10f));
         Assert.Equal(TileBatcher.FarZoomLodBlockSize, IsoTileControl.GetFarZoomLodBlockSize(0.14f, TileBatcher.FarZoomLodBlockSize));
         Assert.Equal(1, IsoTileControl.GetFarZoomLodBlockSize(0.18f, TileBatcher.FarZoomLodBlockSize));
+    }
+
+    [Theory]
+    [InlineData(TerrainRenderMode.Voxel)]
+    [InlineData(TerrainRenderMode.ShadedRelief)]
+    [InlineData(TerrainRenderMode.Heat)]
+    [InlineData(TerrainRenderMode.Topographical)]
+    public void TileHighlightVerticesAreBuiltForEveryRenderMode(TerrainRenderMode renderMode)
+    {
+        var map = TileMapPresets.Flat(3, 3);
+        var highlights = new[]
+        {
+            new ObservableTileHighlight(new TileCoordinate(1, 1), Colors.Gold),
+        };
+
+        var vertices = IsoTileControl.BuildTileHighlightVertices(
+            map,
+            highlights,
+            renderMode,
+            0f,
+            ViewProjectionMode.ThreeD);
+
+        Assert.Equal(5 * 6 * 6, vertices.Length);
+    }
+
+    [Fact]
+    public void TileHighlightVerticesSkipOutOfBoundsEntries()
+    {
+        var map = TileMapPresets.Flat(2, 2);
+        var highlights = new[]
+        {
+            new ObservableTileHighlight(new TileCoordinate(4, 1), Colors.Gold),
+        };
+
+        var vertices = IsoTileControl.BuildTileHighlightVertices(
+            map,
+            highlights,
+            TerrainRenderMode.Voxel,
+            0f,
+            ViewProjectionMode.ThreeD);
+
+        Assert.Empty(vertices);
+    }
+
+    [Fact]
+    public void TileHighlightColoursAreDerivedFromHighlightAndTerrainColour()
+    {
+        var (ring, fill) = IsoTileControl.GetTileHighlightColours(Colors.Red, new Vector3(0.2f, 0.4f, 0.6f));
+
+        Assert.True(ring.X > fill.X);
+        Assert.True(fill.Z > 0f);
+        Assert.True(ring.X <= 1f);
     }
 }

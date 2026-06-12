@@ -14,7 +14,7 @@ public sealed class MainViewModelTests
         var viewModel = new MainViewModel();
 
         Assert.Equal(MiniMapLocation.BottomRight, viewModel.MiniMapLocation);
-        Assert.Equal(ViewProjectionMode.Isometric, viewModel.ViewProjectionMode);
+        Assert.Equal(ViewProjectionMode.ThreeD, viewModel.ViewProjectionMode);
         Assert.False(viewModel.IsTopDownView);
         Assert.Equal("2500x2500", viewModel.MapDimensions);
 
@@ -82,7 +82,7 @@ public sealed class MainViewModelTests
         Assert.Equal(ViewProjectionMode.TopDown, viewModel.ViewProjectionMode);
         Assert.True(viewModel.IsTopDownView);
 
-        viewModel.ViewProjectionMode = ViewProjectionMode.Isometric;
+        viewModel.ViewProjectionMode = ViewProjectionMode.ThreeD;
         Assert.False(viewModel.IsTopDownView);
     }
 }
