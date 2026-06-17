@@ -463,6 +463,62 @@ public sealed class IsoViewport : Grid
         {
             _syncingFromChild = false;
         }
+
+        SyncChildOriginatedValue(property);
+    }
+
+    private void SyncChildOriginatedValue<T>(StyledProperty<T> property)
+    {
+        if (property == CameraZoomProperty)
+        {
+            _terrain.CameraZoom = CameraZoom;
+            _pieceOverlay.CameraZoom = CameraZoom;
+            _input.CameraZoom = CameraZoom;
+            _topoLabels.CameraZoom = CameraZoom;
+            _miniMap.CameraZoom = CameraZoom;
+            _pieceOverlay.InvalidateVisual();
+        }
+        else if (property == CameraPanXProperty)
+        {
+            _terrain.CameraPanX = CameraPanX;
+            _pieceOverlay.CameraPanX = CameraPanX;
+            _input.CameraPanX = CameraPanX;
+            _topoLabels.CameraPanX = CameraPanX;
+            _miniMap.CameraPanX = CameraPanX;
+            _pieceOverlay.InvalidateVisual();
+        }
+        else if (property == CameraPanYProperty)
+        {
+            _terrain.CameraPanY = CameraPanY;
+            _pieceOverlay.CameraPanY = CameraPanY;
+            _input.CameraPanY = CameraPanY;
+            _topoLabels.CameraPanY = CameraPanY;
+            _miniMap.CameraPanY = CameraPanY;
+            _pieceOverlay.InvalidateVisual();
+        }
+        else if (property == CameraRotationDegreesProperty)
+        {
+            _terrain.CameraRotationDegrees = CameraRotationDegrees;
+            _pieceOverlay.CameraRotationDegrees = CameraRotationDegrees;
+            _input.CameraRotationDegrees = CameraRotationDegrees;
+            _topoLabels.CameraRotationDegrees = CameraRotationDegrees;
+            _miniMap.CameraRotationDegrees = CameraRotationDegrees;
+            _pieceOverlay.InvalidateVisual();
+        }
+        else if (property == ViewProjectionModeProperty)
+        {
+            _terrain.ViewProjectionMode = ViewProjectionMode;
+            _pieceOverlay.ViewProjectionMode = ViewProjectionMode;
+            _input.ViewProjectionMode = ViewProjectionMode;
+            _topoLabels.ViewProjectionMode = ViewProjectionMode;
+            _miniMap.ViewProjectionMode = ViewProjectionMode;
+            _pieceOverlay.InvalidateVisual();
+        }
+        else if (property == AnimationsEnabledProperty)
+        {
+            _terrain.AnimationsEnabled = AnimationsEnabled;
+            _input.AnimationsEnabled = AnimationsEnabled;
+        }
     }
 
     private void SyncAllToChildren()
