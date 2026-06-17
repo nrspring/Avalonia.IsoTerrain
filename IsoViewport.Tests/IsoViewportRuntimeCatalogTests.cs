@@ -150,14 +150,20 @@ public sealed class IsoViewportRuntimeCatalogTests
     {
         var viewport = LockWithUnitType();
 
-        Assert.Throws<IsoViewportValidationException>(
+        var emptyId = Assert.Throws<IsoViewportValidationException>(
             () => viewport.Pieces = new[] { new ObservableMapPiece(" ", "unit", new TileCoordinate(0, 0)) });
-        Assert.Throws<IsoViewportValidationException>(
+        var emptyType = Assert.Throws<IsoViewportValidationException>(
             () => viewport.Pieces = new[] { new ObservableMapPiece("unit-1", " ", new TileCoordinate(0, 0)) });
-        Assert.Throws<IsoViewportValidationException>(
+        var missingType = Assert.Throws<IsoViewportValidationException>(
             () => viewport.Pieces = new[] { new ObservableMapPiece("unit-1", "missing", new TileCoordinate(0, 0)) });
-        Assert.Throws<IsoViewportValidationException>(
+        var outOfBounds = Assert.Throws<IsoViewportValidationException>(
             () => viewport.Pieces = new[] { new ObservableMapPiece("unit-1", "unit", new TileCoordinate(3, 0)) });
+
+        Assert.Contains("Pieces", emptyId.Message);
+        Assert.Contains("Pieces", emptyType.Message);
+        Assert.Contains("missing", missingType.Message);
+        Assert.Contains("Pieces", outOfBounds.Message);
+        Assert.Contains("outside", outOfBounds.Message);
     }
 
     [Fact]
@@ -177,11 +183,30 @@ public sealed class IsoViewportRuntimeCatalogTests
     {
         var viewport = LockWithUnitType();
 
-        Assert.Throws<IsoViewportValidationException>(
+        var exception = Assert.Throws<IsoViewportValidationException>(
             () => viewport.TileHighlights = new[]
             {
                 new ObservableTileHighlight(new TileCoordinate(0, 3), Colors.Yellow),
             });
+
+        Assert.Contains("TileHighlights", exception.Message);
+        Assert.Contains("outside", exception.Message);
+    }
+
+    [Fact]
+    public async Task BackgroundRuntimeCollectionMutationThrowsClearException()
+    {
+        var viewport = LockWithUnitType();
+        var pieces = new ObservableCollection<IMapPiece>();
+
+        viewport.Pieces = pieces;
+
+        var exception = await Task.Run(
+            () => Assert.Throws<IsoViewportSetupException>(
+                () => pieces.Add(new ObservableMapPiece("unit-1", "unit", new TileCoordinate(0, 0)))));
+
+        Assert.Contains("Pieces", exception.Message);
+        Assert.Contains("owner UI thread", exception.Message);
     }
 
     private static ViewerControl LockWithUnitType()

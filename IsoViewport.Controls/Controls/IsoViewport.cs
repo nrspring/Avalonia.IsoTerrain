@@ -87,6 +87,7 @@ public sealed class IsoViewport : Grid
             viewport => viewport.IsSetupLocked);
 
     private readonly IsoTileControl _terrain;
+    private readonly MapPieceOverlay _pieceOverlay;
     private readonly IsoInputOverlay _input;
     private readonly TopoLabelOverlay _topoLabels;
     private readonly MiniMapControl _miniMap;
@@ -99,6 +100,7 @@ public sealed class IsoViewport : Grid
     private INotifyCollectionChanged? _observedTypeDefinitions;
     private INotifyCollectionChanged? _observedPieces;
     private INotifyCollectionChanged? _observedHighlights;
+    private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
     private TileMap? _lockedTileMap;
     private TileCoordinate? _hoveredTile;
     private TileCoordinate? _lastHoverCommandTile;
@@ -116,6 +118,11 @@ public sealed class IsoViewport : Grid
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
+        _pieceOverlay = new MapPieceOverlay
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
         _input = new IsoInputOverlay
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -130,6 +137,7 @@ public sealed class IsoViewport : Grid
         _miniMap = new MiniMapControl();
 
         Children.Add(_terrain);
+        Children.Add(_pieceOverlay);
         Children.Add(_input);
         Children.Add(_topoLabels);
         Children.Add(_miniMap);
@@ -147,6 +155,7 @@ public sealed class IsoViewport : Grid
         get => GetValue(TileMapProperty);
         set
         {
+            EnsureOwnerThread(nameof(TileMap));
             ValidateTileMapAssignment(value);
             SetValue(TileMapProperty, value);
         }
@@ -157,6 +166,7 @@ public sealed class IsoViewport : Grid
         get => GetValue(PieceTypeDefinitionsProperty);
         set
         {
+            EnsureOwnerThread(nameof(PieceTypeDefinitions));
             ValidatePieceTypeDefinitionsAssignment(value);
             SetValue(PieceTypeDefinitionsProperty, value);
         }
@@ -167,6 +177,7 @@ public sealed class IsoViewport : Grid
         get => GetValue(PiecesProperty);
         set
         {
+            EnsureOwnerThread(nameof(Pieces));
             EnsureDynamicCollectionChangeAllowed(value, nameof(Pieces));
             SetValue(PiecesProperty, value);
         }
@@ -177,6 +188,7 @@ public sealed class IsoViewport : Grid
         get => GetValue(TileHighlightsProperty);
         set
         {
+            EnsureOwnerThread(nameof(TileHighlights));
             EnsureDynamicCollectionChangeAllowed(value, nameof(TileHighlights));
             SetValue(TileHighlightsProperty, value);
         }
@@ -311,17 +323,21 @@ public sealed class IsoViewport : Grid
         {
             HandleTileMapChanged(change.GetOldValue<TileMap?>(), change.GetNewValue<TileMap?>());
             _terrain.TileMap = TileMap;
+            _pieceOverlay.TileMap = TileMap;
             _input.TileMap = TileMap;
             _topoLabels.TileMap = TileMap;
             _miniMap.TileMap = TileMap;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == PieceTypeDefinitionsProperty)
         {
             HandlePieceTypeDefinitionsChanged(change.GetOldValue<IEnumerable?>(), change.GetNewValue<IEnumerable?>());
+            UpdatePieceOverlay();
         }
         else if (change.Property == PiecesProperty)
         {
             HandlePiecesChanged(change.GetOldValue<IEnumerable?>(), change.GetNewValue<IEnumerable?>());
+            UpdatePieceOverlay();
         }
         else if (change.Property == TileHighlightsProperty)
         {
@@ -334,42 +350,54 @@ public sealed class IsoViewport : Grid
         else if (change.Property == CameraZoomProperty)
         {
             _terrain.CameraZoom = CameraZoom;
+            _pieceOverlay.CameraZoom = CameraZoom;
             _input.CameraZoom = CameraZoom;
             _topoLabels.CameraZoom = CameraZoom;
             _miniMap.CameraZoom = CameraZoom;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == CameraPanXProperty)
         {
             _terrain.CameraPanX = CameraPanX;
+            _pieceOverlay.CameraPanX = CameraPanX;
             _input.CameraPanX = CameraPanX;
             _topoLabels.CameraPanX = CameraPanX;
             _miniMap.CameraPanX = CameraPanX;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == CameraPanYProperty)
         {
             _terrain.CameraPanY = CameraPanY;
+            _pieceOverlay.CameraPanY = CameraPanY;
             _input.CameraPanY = CameraPanY;
             _topoLabels.CameraPanY = CameraPanY;
             _miniMap.CameraPanY = CameraPanY;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == CameraRotationDegreesProperty)
         {
             _terrain.CameraRotationDegrees = CameraRotationDegrees;
+            _pieceOverlay.CameraRotationDegrees = CameraRotationDegrees;
             _input.CameraRotationDegrees = CameraRotationDegrees;
             _topoLabels.CameraRotationDegrees = CameraRotationDegrees;
             _miniMap.CameraRotationDegrees = CameraRotationDegrees;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == ViewProjectionModeProperty)
         {
             _terrain.ViewProjectionMode = ViewProjectionMode;
+            _pieceOverlay.ViewProjectionMode = ViewProjectionMode;
             _input.ViewProjectionMode = ViewProjectionMode;
             _topoLabels.ViewProjectionMode = ViewProjectionMode;
             _miniMap.ViewProjectionMode = ViewProjectionMode;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == RenderModeProperty)
         {
             _terrain.RenderMode = RenderMode;
+            _pieceOverlay.RenderMode = RenderMode;
             _topoLabels.RenderMode = RenderMode;
+            _pieceOverlay.InvalidateVisual();
         }
         else if (change.Property == AnimationsEnabledProperty)
         {
@@ -440,37 +468,44 @@ public sealed class IsoViewport : Grid
     private void SyncAllToChildren()
     {
         _terrain.TileMap = TileMap;
+        _pieceOverlay.TileMap = TileMap;
         _input.TileMap = TileMap;
         _topoLabels.TileMap = TileMap;
         _miniMap.TileMap = TileMap;
         _terrain.ObjectLayer = ObjectLayer;
 
         _terrain.CameraZoom = CameraZoom;
+        _pieceOverlay.CameraZoom = CameraZoom;
         _input.CameraZoom = CameraZoom;
         _topoLabels.CameraZoom = CameraZoom;
         _miniMap.CameraZoom = CameraZoom;
 
         _terrain.CameraPanX = CameraPanX;
+        _pieceOverlay.CameraPanX = CameraPanX;
         _input.CameraPanX = CameraPanX;
         _topoLabels.CameraPanX = CameraPanX;
         _miniMap.CameraPanX = CameraPanX;
 
         _terrain.CameraPanY = CameraPanY;
+        _pieceOverlay.CameraPanY = CameraPanY;
         _input.CameraPanY = CameraPanY;
         _topoLabels.CameraPanY = CameraPanY;
         _miniMap.CameraPanY = CameraPanY;
 
         _terrain.CameraRotationDegrees = CameraRotationDegrees;
+        _pieceOverlay.CameraRotationDegrees = CameraRotationDegrees;
         _input.CameraRotationDegrees = CameraRotationDegrees;
         _topoLabels.CameraRotationDegrees = CameraRotationDegrees;
         _miniMap.CameraRotationDegrees = CameraRotationDegrees;
 
         _terrain.ViewProjectionMode = ViewProjectionMode;
+        _pieceOverlay.ViewProjectionMode = ViewProjectionMode;
         _input.ViewProjectionMode = ViewProjectionMode;
         _topoLabels.ViewProjectionMode = ViewProjectionMode;
         _miniMap.ViewProjectionMode = ViewProjectionMode;
 
         _terrain.RenderMode = RenderMode;
+        _pieceOverlay.RenderMode = RenderMode;
         _topoLabels.RenderMode = RenderMode;
         _terrain.AnimationsEnabled = AnimationsEnabled;
         _input.AnimationsEnabled = AnimationsEnabled;
@@ -478,6 +513,7 @@ public sealed class IsoViewport : Grid
         _miniMap.Location = MiniMapLocation;
         _terrain.HoveredTile = ToTuple(HoveredTile);
         UpdateTerrainHighlights();
+        UpdatePieceOverlay();
     }
 
     private void OnInputTileHovered(object? sender, TileHoverChangedEventArgs e)
@@ -662,6 +698,8 @@ public sealed class IsoViewport : Grid
 
     private void OnTypeDefinitionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(PieceTypeDefinitions));
+
         if (IsSetupLocked)
         {
             throw new IsoViewportSetupException("PieceTypeDefinitions cannot be modified after setup is locked.");
@@ -674,6 +712,8 @@ public sealed class IsoViewport : Grid
 
     private void OnTypeDefinitionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(PieceTypeDefinitions));
+
         if (IsSetupLocked)
         {
             throw new IsoViewportSetupException("PieceTypeDefinitions items cannot be modified after setup is locked.");
@@ -684,11 +724,13 @@ public sealed class IsoViewport : Grid
 
     private void OnLockedTileMapChanged(int row, int col)
     {
+        EnsureOwnerThread(nameof(TileMap));
         throw new IsoViewportSetupException("TileMap cannot be modified after setup is locked.");
     }
 
     private void OnPiecesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(Pieces));
         DetachRuntimeObservers(ref _observedPieces, _observedPieceItems, OnPiecesCollectionChanged, OnPiecePropertyChanged);
         AttachRuntimeObservers(Pieces, ref _observedPieces, _observedPieceItems, OnPiecesCollectionChanged, OnPiecePropertyChanged);
         RebuildRuntimePieceCatalog();
@@ -697,6 +739,7 @@ public sealed class IsoViewport : Grid
 
     private void OnHighlightsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(TileHighlights));
         DetachRuntimeObservers(ref _observedHighlights, _observedHighlightItems, OnHighlightsCollectionChanged, OnHighlightPropertyChanged);
         AttachRuntimeObservers(TileHighlights, ref _observedHighlights, _observedHighlightItems, OnHighlightsCollectionChanged, OnHighlightPropertyChanged);
         RebuildRuntimeHighlightCatalog();
@@ -705,12 +748,14 @@ public sealed class IsoViewport : Grid
 
     private void OnPiecePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(Pieces));
         RebuildRuntimePieceCatalog();
         InvalidateRuntimeVisuals();
     }
 
     private void OnHighlightPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        EnsureOwnerThread(nameof(TileHighlights));
         RebuildRuntimeHighlightCatalog();
         InvalidateRuntimeVisuals();
     }
@@ -730,7 +775,7 @@ public sealed class IsoViewport : Grid
             {
                 if (validate)
                 {
-                    throw new IsoViewportValidationException("Every piece type definition must implement IMapPieceTypeDefinition.");
+                    throw new IsoViewportValidationException("Every item in PieceTypeDefinitions must implement IMapPieceTypeDefinition.");
                 }
 
                 continue;
@@ -740,7 +785,7 @@ public sealed class IsoViewport : Grid
             {
                 if (validate)
                 {
-                    throw new IsoViewportValidationException("Piece type definitions must provide a non-empty TypeId.");
+                    throw new IsoViewportValidationException($"PieceTypeDefinitions entry '{definition.DisplayName}' must provide a non-empty TypeId.");
                 }
 
                 continue;
@@ -750,7 +795,7 @@ public sealed class IsoViewport : Grid
             {
                 if (validate)
                 {
-                    throw new IsoViewportValidationException($"Piece type definition '{definition.TypeId}' must provide a renderer.");
+                    throw new IsoViewportValidationException($"PieceTypeDefinitions entry '{definition.TypeId}' ('{definition.DisplayName}') must provide a renderer.");
                 }
 
                 continue;
@@ -758,6 +803,8 @@ public sealed class IsoViewport : Grid
 
             _pieceTypeCatalog[definition.TypeId] = definition;
         }
+
+        UpdatePieceOverlay();
     }
 
     private void RebuildRuntimePieceCatalog()
@@ -775,12 +822,14 @@ public sealed class IsoViewport : Grid
         {
             if (item is not IMapPiece piece)
             {
-                throw new IsoViewportValidationException("Every runtime piece must implement IMapPiece.");
+                throw new IsoViewportValidationException("Every item in Pieces must implement IMapPiece.");
             }
 
             ValidateRuntimePiece(piece, map);
             _runtimePieceCatalog[piece.Id] = piece;
         }
+
+        UpdatePieceOverlay();
     }
 
     private void RebuildRuntimeHighlightCatalog()
@@ -799,10 +848,10 @@ public sealed class IsoViewport : Grid
         {
             if (item is not ITileHighlight highlight)
             {
-                throw new IsoViewportValidationException("Every tile highlight must implement ITileHighlight.");
+                throw new IsoViewportValidationException("Every item in TileHighlights must implement ITileHighlight.");
             }
 
-            ValidateTileCoordinate(highlight.Tile, map, "Tile highlight");
+            ValidateTileCoordinate(highlight.Tile, map, "TileHighlights entry");
             _runtimeHighlightCatalog[highlight.Tile] = highlight;
         }
 
@@ -816,24 +865,30 @@ public sealed class IsoViewport : Grid
             : _runtimeHighlightCatalog.Values.ToArray();
     }
 
+    private void UpdatePieceOverlay()
+    {
+        _pieceOverlay.PieceTypeDefinitions = new Dictionary<string, IMapPieceTypeDefinition>(_pieceTypeCatalog, StringComparer.Ordinal);
+        _pieceOverlay.Pieces = new Dictionary<string, IMapPiece>(_runtimePieceCatalog, StringComparer.Ordinal);
+    }
+
     private void ValidateRuntimePiece(IMapPiece piece, TileMap map)
     {
         if (string.IsNullOrWhiteSpace(piece.Id))
         {
-            throw new IsoViewportValidationException("Runtime pieces must provide a non-empty Id.");
+            throw new IsoViewportValidationException("Pieces entry must provide a non-empty Id.");
         }
 
         if (string.IsNullOrWhiteSpace(piece.TypeId))
         {
-            throw new IsoViewportValidationException($"Runtime piece '{piece.Id}' must provide a non-empty TypeId.");
+            throw new IsoViewportValidationException($"Pieces entry '{piece.Id}' must provide a non-empty TypeId.");
         }
 
         if (!_pieceTypeCatalog.ContainsKey(piece.TypeId))
         {
-            throw new IsoViewportValidationException($"Runtime piece '{piece.Id}' references unknown piece type '{piece.TypeId}'.");
+            throw new IsoViewportValidationException($"Pieces entry '{piece.Id}' references unknown piece type '{piece.TypeId}'.");
         }
 
-        ValidateTileCoordinate(piece.Tile, map, $"Runtime piece '{piece.Id}'");
+        ValidateTileCoordinate(piece.Tile, map, $"Pieces entry '{piece.Id}'");
     }
 
     private static void ValidateTileCoordinate(TileCoordinate tile, TileMap map, string source)
@@ -847,6 +902,14 @@ public sealed class IsoViewport : Grid
     private TileMap RequireLockedMapForRuntimeData()
     {
         return _lockedTileMap ?? throw new IsoViewportSetupException("Runtime collections cannot be processed before setup is locked.");
+    }
+
+    private void EnsureOwnerThread(string operation)
+    {
+        if (Environment.CurrentManagedThreadId != _ownerThreadId)
+        {
+            throw new IsoViewportSetupException($"{operation} changes must occur on the IsoViewport owner UI thread.");
+        }
     }
 
     private static void AttachRuntimeObservers(
@@ -900,6 +963,7 @@ public sealed class IsoViewport : Grid
     private void InvalidateRuntimeVisuals()
     {
         _terrain.RequestNextFrameRendering();
+        _pieceOverlay.InvalidateVisual();
         InvalidateVisual();
     }
 

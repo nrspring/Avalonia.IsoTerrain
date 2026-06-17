@@ -15,6 +15,7 @@ public sealed class IsoViewportWrapperTests
         var viewport = new ViewerControl();
 
         Assert.Single(viewport.Children.OfType<IsoTileControl>());
+        Assert.Single(viewport.Children.OfType<MapPieceOverlay>());
         Assert.Single(viewport.Children.OfType<IsoInputOverlay>());
         Assert.Single(viewport.Children.OfType<TopoLabelOverlay>());
         Assert.Single(viewport.Children.OfType<MiniMapControl>());
@@ -40,22 +41,28 @@ public sealed class IsoViewportWrapperTests
         };
 
         var terrain = viewport.Children.OfType<IsoTileControl>().Single();
+        var pieces = viewport.Children.OfType<MapPieceOverlay>().Single();
         var input = viewport.Children.OfType<IsoInputOverlay>().Single();
         var labels = viewport.Children.OfType<TopoLabelOverlay>().Single();
         var miniMap = viewport.Children.OfType<MiniMapControl>().Single();
 
         Assert.Same(map, terrain.TileMap);
+        Assert.Same(map, pieces.TileMap);
         Assert.Same(map, input.TileMap);
         Assert.Same(map, labels.TileMap);
         Assert.Same(map, miniMap.TileMap);
         Assert.Equal(1.75f, terrain.CameraZoom);
+        Assert.Equal(1.75f, pieces.CameraZoom);
         Assert.Equal(1.75f, input.CameraZoom);
         Assert.Equal(1.75f, miniMap.CameraZoom);
         Assert.Equal(12f, input.CameraPanX);
         Assert.Equal(24f, input.CameraPanY);
         Assert.Equal(90f, labels.CameraRotationDegrees);
+        Assert.Equal(90f, pieces.CameraRotationDegrees);
         Assert.Equal(ViewProjectionMode.TopDown, terrain.ViewProjectionMode);
+        Assert.Equal(ViewProjectionMode.TopDown, pieces.ViewProjectionMode);
         Assert.Equal(TerrainRenderMode.Heat, terrain.RenderMode);
+        Assert.Equal(TerrainRenderMode.Heat, pieces.RenderMode);
         Assert.False(input.AnimationsEnabled);
         Assert.False(miniMap.IsVisible);
         Assert.Equal(MiniMapLocation.TopLeft, miniMap.Location);
@@ -76,5 +83,25 @@ public sealed class IsoViewportWrapperTests
         Assert.Equal(18f, viewport.CameraPanX);
         Assert.Equal(27f, viewport.CameraPanY);
         Assert.Equal(new TileCoordinate(4, 3), viewport.HoveredTile);
+    }
+
+    [Fact]
+    public void WrapperPushesRuntimePiecesToInternalOverlay()
+    {
+        var piece = new ObservableMapPiece("piece-1", "unit", new TileCoordinate(1, 1));
+        var viewport = new ViewerControl
+        {
+            PieceTypeDefinitions = new[]
+            {
+                new ObservableMapPieceTypeDefinition("unit", "Unit", 10, NullMapPieceRenderer.Instance),
+            },
+            TileMap = TileMapPresets.Flat(3, 3),
+            Pieces = new[] { piece },
+        };
+
+        var overlay = viewport.Children.OfType<MapPieceOverlay>().Single();
+
+        Assert.Same(piece, overlay.Pieces["piece-1"]);
+        Assert.Equal("unit", overlay.PieceTypeDefinitions["unit"].TypeId);
     }
 }

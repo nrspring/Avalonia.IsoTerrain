@@ -8,14 +8,20 @@
     <Border Grid.Row="0" Background="#20242B" Padding="10">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-          <Button Command="{Binding LoadSmallMapCommand}" Content="Small" />
-          <Button Command="{Binding LoadMediumMapCommand}" Content="Medium" />
-          <Button Command="{Binding LoadFlatMapCommand}" Content="Flat" />
+          <ComboBox Width="170"
+                    ItemsSource="{Binding ScenarioPresets}"
+                    SelectedItem="{Binding SelectedScenarioPreset, Mode=TwoWay}" />
+          <Button Command="{Binding ApplySelectedScenarioCommand}" Content="Apply" />
           <Button Command="{Binding ResetViewCommand}" Content="Reset" />
           <Button Command="{Binding RotateLeftCommand}" Content="Rotate Left" />
           <Button Command="{Binding RotateRightCommand}" Content="Rotate Right" />
           <Button Command="{Binding AddSampleHighlightsCommand}" Content="Sample Highlights" />
           <Button Command="{Binding ClearHighlightsCommand}" Content="Clear Highlights" />
+          <Button Command="{Binding AddSamplePiecesCommand}" Content="Sample Pieces" />
+          <Button Command="{Binding ClearPiecesCommand}" Content="Clear Pieces" />
+          <Button Command="{Binding UseNullRuntimeCollectionsCommand}" Content="Null Runtime" />
+          <Button Command="{Binding AssignRuntimeCollectionsCommand}" Content="Assign Runtime" />
+          <Button Command="{Binding RunInvalidDataDiagnosticCommand}" Content="Invalid Diagnostic" />
         </StackPanel>
 
         <StackPanel Grid.Column="1" Margin="18,0,0,0" Orientation="Horizontal" Spacing="8">
@@ -41,6 +47,13 @@
                         OnContent="Hover Glow"
                         OffContent="Hover Off"
                         VerticalAlignment="Center" />
+          <ComboBox Width="120"
+                    ItemsSource="{Binding PieceTypeIds}"
+                    SelectedItem="{Binding SelectedPieceTypeId, Mode=TwoWay}" />
+          <Button Command="{Binding RotateSelectedPieceCommand}" Content="Rotate Piece" />
+          <Button Command="{Binding ToggleSelectedVisibilityCommand}" Content="Show/Hide" />
+          <Button Command="{Binding CycleSelectedFactionCommand}" Content="Faction" />
+          <Button Command="{Binding RemoveSelectedPieceCommand}" Content="Remove Piece" />
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14">
@@ -58,6 +71,7 @@
       <controls:IsoViewport
           PieceTypeDefinitions="{Binding PieceTypeDefinitions}"
           TileMap="{Binding TileMap}"
+          Pieces="{Binding Pieces}"
           TileHighlights="{Binding TileHighlights}"
           CameraZoom="{Binding CameraZoom, Mode=TwoWay}"
           CameraPanX="{Binding CameraPanX, Mode=TwoWay}"
@@ -68,6 +82,7 @@
           AnimationsEnabled="{Binding AnimationsEnabled, Mode=TwoWay}"
           IsMiniMapVisible="{Binding IsMiniMapVisible, Mode=TwoWay}"
           MiniMapLocation="{Binding MiniMapLocation, Mode=TwoWay}"
+          IsSetupLocked="{Binding IsSetupLocked, Mode=OneWayToSource}"
           HoveredTile="{Binding HoveredTile, Mode=OneWayToSource}"
           TileHoverCommand="{Binding HandleTileHoverCommand}"
           TileClickCommand="{Binding HandleTileClickCommand}"
@@ -87,8 +102,12 @@
         <StackPanel Spacing="3">
           <TextBlock Foreground="#E7EDF5" Text="{Binding HoveredTileText}" />
           <TextBlock Foreground="#E7EDF5" Text="{Binding LastClickText}" />
+          <TextBlock Foreground="#E7EDF5" Text="{Binding SelectedPieceText}" />
+          <TextBlock Foreground="#E7EDF5" Text="{Binding SetupStatusText}" />
+          <TextBlock Foreground="#E7EDF5" Text="{Binding DiagnosticsText}" />
+          <TextBlock Foreground="#F1C0B4" Text="{Binding RendererErrorText}" />
           <TextBlock Foreground="#AFC0D3" Text="WASD/arrows pan, scroll zooms, Q/E rotates, R resets, Space toggles animation." />
-          <TextBlock Foreground="#AFC0D3" Text="Left click toggles a host-owned selection highlight. Hover glow is also host-owned." />
+          <TextBlock Foreground="#AFC0D3" Text="Left click places the selected piece type and toggles a host-owned selection highlight." />
         </StackPanel>
       </Border>
     </Grid>

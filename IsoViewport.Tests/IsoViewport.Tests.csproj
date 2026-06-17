@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\IsoViewport.Controls\IsoViewport.Controls.csproj" />
     <ProjectReference Include="..\IsoViewport.Demo\IsoViewport.Demo.csproj" />
+    <ProjectReference Include="..\IsoViewport.Harness\IsoViewport.Harness.csproj" />
   </ItemGroup>
 
   <ItemGroup>
